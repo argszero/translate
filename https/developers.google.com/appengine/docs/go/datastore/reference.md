@@ -22,14 +22,18 @@ Entities是存储的基本单元，每个Entity关联一个key。key由一个可
 
 It is valid to create a key with a zero StringID and a zero IntID; this is called an incomplete key, and does not refer to any saved entity. Putting an entity into the datastore under an incomplete key will cause a unique key to be generated for that entity, with a non-zero IntID.
 
+也可以创建一个StringID或IntID为零的key,这种key称为未完成key(incomplete key),它不指向任何以保存的entity。在将一个带有未完成key的entity put到数据库时，会为该entity产生一个唯一的非零的key
+
 An entity's contents are a mapping from case-sensitive field names to values. Valid value types are:
+
+entity的内容为一系列不区分大小写的字段名到字段值的映射。合法的类型如下：
 
 - signed integers (int, int8, int16, int32 and int64),
 - bool,
 - string,
 - float32 and float64,
 - any type whose underlying type is one of the above predeclared types,
-- *Key,
+- \*Key,
 - time.Time (stored with microsecond precision),
 - appengine.BlobKey,
 - []byte (up to 1 megabyte in length),
@@ -38,100 +42,125 @@ An entity's contents are a mapping from case-sensitive field names to values. Va
 
 Slices of structs are valid, as are structs that contain slices. However, if one struct contains another, then at most one of those can be repeated. This disqualifies recursively defined struct types: any struct T that (directly or indirectly) contains a []T.
 
+结构体数组以及结构体里包含数组都是合法的。However, if one struct contains another, then at most one of those can be repeated. 这样就不允许结构体的递归定义: 某个结构体T（直接或间接的）包含[]T
+
 The Get and Put functions load and save an entity's contents. An entity's contents are typically represented by a struct pointer.
+
+Get和Put方法用来加载和保存entity内容。entity的内容一般通过一个结构体指针来描述。
 
 Example code:
 
-type Entity struct {
-    Value string
-}
-
-func handle(w http.ResponseWriter, r *http.Request) {
-    c := appengine.NewContext(r)
-
-    k := datastore.NewKey(c, "Entity", "stringID", 0, nil)
-    e := new(Entity)
-    if err := datastore.Get(c, k, e); err != nil {
-    	http.Error(w, err.Error(), 500)
-    	return
+    type Entity struct {
+        Value string
+    }
+    
+    func handle(w http.ResponseWriter, r *http.Request) {
+        c := appengine.NewContext(r)
+    
+        k := datastore.NewKey(c, "Entity", "stringID", 0, nil)
+        e := new(Entity)
+        if err := datastore.Get(c, k, e); err != nil {
+        	http.Error(w, err.Error(), 500)
+        	return
+        }
+    
+        old := e.Value
+        e.Value = r.URL.Path
+    
+        if _, err := datastore.Put(c, k, e); err != nil {
+        	http.Error(w, err.Error(), 500)
+        	return
+        }
+    
+        w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+        fmt.Fprintf(w, "old=%q\nnew=%q\n", old, e.Value)
     }
 
-    old := e.Value
-    e.Value = r.URL.Path
+GetMulti, PutMulti and DeleteMulti are batch versions of the Get, Put and Delete functions. They take a []\*Key instead of a \*Key, and may return an appengine.MultiError when encountering partial failure.
 
-    if _, err := datastore.Put(c, k, e); err != nil {
-    	http.Error(w, err.Error(), 500)
-    	return
-    }
+GetMulti,PutMulti 和 DeleteMulti是Get,Put和Delete方法的批量化版本。它们接收一个[]\*Key 而不是一个\*Key，当部分失败时，返回一个appengine.MultiError。
 
-    w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-    fmt.Fprintf(w, "old=%q\nnew=%q\n", old, e.Value)
-}
-
-GetMulti, PutMulti and DeleteMulti are batch versions of the Get, Put and Delete functions. They take a []*Key instead of a *Key, and may return an appengine.MultiError when encountering partial failure.
-Properties
+### Properties
+### 属性
 
 An entity's contents can be represented by a variety of types. These are typically struct pointers, but can also be any type that implements the PropertyLoadSaver interface. If using a struct pointer, you do not have to explicitly implement the PropertyLoadSaver interface; the datastore will automatically convert via reflection. If a struct pointer does implement that interface then those methods will be used in preference to the default behavior for struct pointers. Struct pointers are more strongly typed and are easier to use; PropertyLoadSavers are more flexible.
 
-The actual types passed do not have to match between Get and Put calls or even across different App Engine requests. It is valid to put a *PropertyList and get that same entity as a *myStruct, or put a *myStruct0 and get a *myStruct1. Conceptually, any entity is saved as a sequence of properties, and is loaded into the destination value on a property-by-property basis. When loading into a struct pointer, an entity that cannot be completely represented (such as a missing field) will result in an ErrFieldMismatch error but it is up to the caller whether this error is fatal, recoverable or ignorable.
+实体内容可以被表达为不同的类型。通常为结构指针，也可以为任何实现了PropertyLoadSaver接口的类型。如果使用结构指针，你不需要显示的实现PropertyLoadSaver接口；数据库会自动的反射转换。如果一个结构指针没有实现那个接口,这这些方法会偏好结构指针的默认行为。结构指针类型更强，并且更容易使用；PropertyLoadSavers更灵活。
+
+The actual types passed do not have to match between Get and Put calls or even across different App Engine requests. It is valid to put a \*PropertyList and get that same entity as a \*myStruct, or put a \*myStruct0 and get a \*myStruct1. Conceptually, any entity is saved as a sequence of properties, and is loaded into the destination value on a property-by-property basis. When loading into a struct pointer, an entity that cannot be completely represented (such as a missing field) will result in an ErrFieldMismatch error but it is up to the caller whether this error is fatal, recoverable or ignorable.
+
+Get和Put请求传入的类型不要求一致，甚至不同的App Engine请求之间也不要求一致。 Put 一个\*PropertyList，然后Get同一个entity为\*myStruct,或者put一个\*myStruct0，get为\*myStruct1都是合法的。从概念上来说，entity被保存为一组属性，加载时一个属性一个属性的加载到目标值。当加载到一个结构指针时，不能完整表达的实体（比如缺少字段）会返回一个ErrFieldMismatch error,由调用者决定这个错误是致命的，可修复的还是该忽略的。
 
 By default, for struct pointers, all properties are potentially indexed, and the property name is the same as the field name (and hence must start with an upper case letter). Fields may have a `datastore:"name,options"` tag. The tag name is the property name, which must be one or more valid Go identifiers joined by ".", but may start with a lower case letter. An empty tag name means to just use the field name. A "-" tag name means that the datastore will ignore that field. If options is "noindex" then the field will not be indexed. If the options is "" then the comma may be omitted. There are no other recognized options.
 
+默认，对于结构指针，所有的属性都是可以备索引的，属性名即字段名（因此必须以一个大写字母开头）。字段可以有一个`datastore:"name,options"`标签。标签的name即为属性的name，它不像是一个或多个通过"."连接的合法的Go标识符,可以以小写字母开头。标签名为空意味着使用字段名。标签名为"-"意味着数据库会忽略这个字段。如果options为"noindex"则这个字段不会备索引。如果options为空则可以省略逗号。没有其他的可以识别的options。
+
 Example code:
 
-// A and B are renamed to a and b.
-// A, C and J are not indexed.
-// D's tag is equivalent to having no tag at all (E).
-// I is ignored entirely by the datastore.
-// J has tag information for both the datastore and json packages.
-type TaggedStruct struct {
-    A int `datastore:"a,noindex"`
-    B int `datastore:"b"`
-    C int `datastore:",noindex"`
-    D int `datastore:""`
-    E int
-    I int `datastore:"-"`
-    J int `datastore:",noindex" json:"j"`
-}
+    // A and B are renamed to a and b.
+    // A, C and J are not indexed.
+    // D's tag is equivalent to having no tag at all (E).
+    // I is ignored entirely by the datastore.
+    // J has tag information for both the datastore and json packages.
+    type TaggedStruct struct {
+        A int `datastore:"a,noindex"`
+        B int `datastore:"b"`
+        C int `datastore:",noindex"`
+        D int `datastore:""`
+        E int
+        I int `datastore:"-"`
+        J int `datastore:",noindex" json:"j"`
+    }
 
-Structured Properties
+### Structured Properties
+### 结构体属性
 
 If the struct pointed to contains other structs, then the nested or embedded structs are flattened. For example, given these definitions:
 
-type Inner1 struct {
-    W int32
-    X string
-}
+如果指向的结构包含其他的结构，则嵌套或嵌入的结构是扁平的。比如，给出如下定义：
 
-type Inner2 struct {
-    Y float64
-}
-
-type Inner3 struct {
-    Z bool
-}
-
-type Outer struct {
-    A int16
-    I []Inner1
-    J Inner2
-    Inner3
-}
+    type Inner1 struct {
+        W int32
+        X string
+    }
+    
+    type Inner2 struct {
+        Y float64
+    }
+    
+    type Inner3 struct {
+        Z bool
+    }
+    
+    type Outer struct {
+        A int16
+        I []Inner1
+        J Inner2
+        Inner3
+    }
 
 then an Outer's properties would be equivalent to those of:
 
-type OuterEquivalent struct {
-    A     int16
-    IDotW []int32  `datastore:"I.W"`
-    IDotX []string `datastore:"I.X"`
-    JDotY float64  `datastore:"J.Y"`
-    Z     bool
-}
+这Outer的属性等价于：
+
+    type OuterEquivalent struct {
+        A     int16
+        IDotW []int32  `datastore:"I.W"`
+        IDotX []string `datastore:"I.X"`
+        JDotY float64  `datastore:"J.Y"`
+        Z     bool
+    }
 
 If Outer's embedded Inner3 field was tagged as `datastore:"Foo"` then the equivalent field would instead be: FooDotZ bool `datastore:"Foo.Z"`.
 
+如果Outer嵌入的Inner3的字段打上了`datastore:"Foo"`标签，则等价的字段会变为：FooDotZ bool `datastore:"Foo.Z"`
+
 If an outer struct is tagged "noindex" then all of its implicit flattened fields are effectively "noindex".
-The PropertyLoadSaver Interface
+
+如果外部的结构打上了"noindex"的标签，则相应扁平化的字段都为"noindex"
+
+### The PropertyLoadSaver Interface
+### PropertyLoadSaver接口
 
 An entity's contents can also be represented by any type that implements the PropertyLoadSaver interface. This type may be a struct pointer, but it does not have to be. The datastore package will call LoadProperties when getting the entity's contents, and SaveProperties when putting the entity's contents. Possible uses include deriving non-stored fields, verifying fields, or indexing a field only if its value is positive.
 
