@@ -3,30 +3,23 @@ https://docs.google.com/document/d/1POyKfDxZaMNVJi-4c2mpJUfuSBch1arW-pc5xvUKNno
 # Hadoop Security Analysis
 # Hadoop安全性分析
 
-NOTE: This is a working draft. Notes are being collected and will be
-edited for readability.
+NOTE: This is a working draft. Notes are being collected and will be edited for readability.
 
-* * * * *
+注意：这是一个工作草案。Notes are being collected and will be edited for readability.
 
-Introduction {.c1}
-============
 
-* * * * *
 
-This document describes the state of security in a Hadoop YARN cluster.
-First, this document describes the following entities and their
-interactions in a secure Hadoop cluster: tokens, principals,
-authentication mechanisms, authenticating parties, authorization
-mechanisms, authorized parties, and execution environment. Second, it
-examines these entities through the lens of adherence to commonly held
-security principles.
+## Introduction
+## 引言
 
-* * * * *
+This document describes the state of security in a Hadoop YARN cluster.  First, this document describes the following entities and their interactions in a secure Hadoop cluster: tokens, principals, authentication mechanisms, authenticating parties, authorization mechanisms, authorized parties, and execution environment. Second, it examines these entities through the lens of adherence to commonly held security principles.
 
-Tokens {.c1}
-======
+本文档描述了Hadoop YARN集群里的安全状态。首先，本文档描述了在一个安全的Hadoop集群里下面这几种实体以及他们之间的交互：tokens, principals, authentication mechanisms, authenticating parties, authorization mechanisms, authorized parties, 以及 execution environment。第二，it examines these entities through the lens of adherence to commonly held security principles。
 
-* * * * *
+
+
+## Tokens
+## Tokens
 
 In general, tokens are added to the current
 [UGI](http://hadoop.apache.org/docs/stable/api/org/apache/hadoop/security/UserGroupInformation.html)?(UserGroupInformation.java).
