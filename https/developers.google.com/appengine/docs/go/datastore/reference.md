@@ -164,46 +164,51 @@ If an outer struct is tagged "noindex" then all of its implicit flattened fields
 
 An entity's contents can also be represented by any type that implements the PropertyLoadSaver interface. This type may be a struct pointer, but it does not have to be. The datastore package will call LoadProperties when getting the entity's contents, and SaveProperties when putting the entity's contents. Possible uses include deriving non-stored fields, verifying fields, or indexing a field only if its value is positive.
 
+entity的内容还可以表达为任意实现了PropertyLoadSaver接口的类型。这个类型可以是一个结构指针，也可以不是。datastore包会在获取entity内容时调用LoadProperties,在保存entity内容时调用SaveProperties。可以用来导出非存储字段，验证字段，或者在某个字段的值为正数时索引。
+
 Example code:
 
-type CustomPropsExample struct {
-    I, J int
-    // Sum is not stored, but should always be equal to I + J.
-    Sum int `datastore:"-"`
-}
+    type CustomPropsExample struct {
+        I, J int
+        // Sum is not stored, but should always be equal to I + J.
+        Sum int `datastore:"-"`
+    }
+    
+    func (x *CustomPropsExample) Load(c <-chan Property) error {
+        // Load I and J as usual.
+        if err := datastore.LoadStruct(x, c); err != nil {
+        	return err
+        }
+        // Derive the Sum field.
+        x.Sum = x.I + x.J
+        return nil
+    }
+    
+    func (x *CustomPropsExample) Save(c chan<- Property) error {
+        defer close(c)
+        // Validate the Sum field.
+        if x.Sum != x.I + x.J {
+        	return os.NewError("CustomPropsExample has inconsistent sum")
+        }
+        // Save I and J as usual. The code below is equivalent to calling
+        // "return datastore.SaveStruct(x, c)", but is done manually for
+        // demonstration purposes.
+        c <- datastore.Property{
+        	Name:  "I",
+        	Value: int64(x.I),
+        }
+        c <- datastore.Property{
+        	Name:  "J",
+        	Value: int64(x.J),
+        }
+        return nil
+    }
 
-func (x *CustomPropsExample) Load(c <-chan Property) error {
-    // Load I and J as usual.
-    if err := datastore.LoadStruct(x, c); err != nil {
-    	return err
-    }
-    // Derive the Sum field.
-    x.Sum = x.I + x.J
-    return nil
-}
+The \*PropertyList type implements PropertyLoadSaver, and can therefore hold an arbitrary entity's contents.
 
-func (x *CustomPropsExample) Save(c chan<- Property) error {
-    defer close(c)
-    // Validate the Sum field.
-    if x.Sum != x.I + x.J {
-    	return os.NewError("CustomPropsExample has inconsistent sum")
-    }
-    // Save I and J as usual. The code below is equivalent to calling
-    // "return datastore.SaveStruct(x, c)", but is done manually for
-    // demonstration purposes.
-    c <- datastore.Property{
-    	Name:  "I",
-    	Value: int64(x.I),
-    }
-    c <- datastore.Property{
-    	Name:  "J",
-    	Value: int64(x.J),
-    }
-    return nil
-}
+\*PropertyList类型实现了PropertyLoadSaver,因此可以容纳任意entity的内容
 
-The *PropertyList type implements PropertyLoadSaver, and can therefore hold an arbitrary entity's contents.
-Queries
+### Queries
 
 Queries retrieve entities based on their properties or key's ancestry. Running a query yields an iterator of results: either keys or (key, entity) pairs. Queries are re-usable and it is safe to call Query.Run from concurrent goroutines. Iterators are not safe for concurrent use.
 
@@ -224,153 +229,154 @@ Queries are immutable, and are either created by calling NewQuery, or derived fr
 
 Example code:
 
-type Widget struct {
-    Description string
-    Price       int
-}
-
-func handle(w http.ResponseWriter, r *http.Request) {
-    c := appengine.NewContext(r)
-    q := datastore.NewQuery("Widget").
-    	Filter("Price <", 1000).
-    	Order("-Price")
-    b := bytes.NewBuffer(nil)
-    for t := q.Run(c); ; {
-    	var x Widget
-    	key, err := t.Next(&x)
-    	if err == datastore.Done {
-    		break
-    	}
-    	if err != nil {
-    		serveError(c, w, err)
-    		return
-    	}
-    	fmt.Fprintf(b, "Key=%v\nWidget=%#v\n\n", key, x)
+    type Widget struct {
+        Description string
+        Price       int
     }
-    w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-    io.Copy(w, b)
-}
+    
+    func handle(w http.ResponseWriter, r *http.Request) {
+        c := appengine.NewContext(r)
+        q := datastore.NewQuery("Widget").
+        	Filter("Price <", 1000).
+        	Order("-Price")
+        b := bytes.NewBuffer(nil)
+        for t := q.Run(c); ; {
+        	var x Widget
+        	key, err := t.Next(&x)
+        	if err == datastore.Done {
+        		break
+        	}
+        	if err != nil {
+        		serveError(c, w, err)
+        		return
+        	}
+        	fmt.Fprintf(b, "Key=%v\nWidget=%#v\n\n", key, x)
+        }
+        w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+        io.Copy(w, b)
+    }
 
-Transactions
+### Transactions
 
 RunInTransaction runs a function in a transaction.
 
 Example code:
 
-type Counter struct {
-    Count int
-}
-
-func inc(c appengine.Context, key *datastore.Key) (int, error) {
-    var x Counter
-    if err := datastore.Get(c, key, &x); err != nil && err != datastore.ErrNoSuchEntity {
-    	return 0, err
+    type Counter struct {
+        Count int
     }
-    x.Count++
-    if _, err := datastore.Put(c, key, &x); err != nil {
-    	return 0, err
+    
+    func inc(c appengine.Context, key *datastore.Key) (int, error) {
+        var x Counter
+        if err := datastore.Get(c, key, &x); err != nil && err != datastore.ErrNoSuchEntity {
+        	return 0, err
+        }
+        x.Count++
+        if _, err := datastore.Put(c, key, &x); err != nil {
+        	return 0, err
+        }
+        return x.Count, nil
     }
-    return x.Count, nil
-}
-
-func handle(w http.ResponseWriter, r *http.Request) {
-    c := appengine.NewContext(r)
-    var count int
-    err := datastore.RunInTransaction(c, func(c appengine.Context) error {
-    	var err1 error
-    	count, err1 = inc(c, datastore.NewKey(c, "Counter", "singleton", 0, nil))
-    	return err1
-    }, nil)
-    if err != nil {
-    	serveError(c, w, err)
-    	return
+    
+    func handle(w http.ResponseWriter, r *http.Request) {
+        c := appengine.NewContext(r)
+        var count int
+        err := datastore.RunInTransaction(c, func(c appengine.Context) error {
+        	var err1 error
+        	count, err1 = inc(c, datastore.NewKey(c, "Counter", "singleton", 0, nil))
+        	return err1
+        }, nil)
+        if err != nil {
+        	serveError(c, w, err)
+        	return
+        }
+        w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+        fmt.Fprintf(w, "Count=%d", count)
     }
-    w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-    fmt.Fprintf(w, "Count=%d", count)
-}
 
-Index
+## Index
 
-    Variables
-    func AllocateIDs(c appengine.Context, kind string, parent *Key, n int) (low, high int64, err error)
-    func Delete(c appengine.Context, key *Key) error
-    func DeleteMulti(c appengine.Context, key []*Key) error
-    func Get(c appengine.Context, key *Key, dst interface{}) error
-    func GetMulti(c appengine.Context, key []*Key, dst interface{}) error
-    func LoadStruct(dst interface{}, c <-chan Property) error
-    func Put(c appengine.Context, key *Key, src interface{}) (*Key, error)
-    func PutMulti(c appengine.Context, key []*Key, src interface{}) ([]*Key, error)
-    func RunInTransaction(c appengine.Context, f func(tc appengine.Context) error, opts *TransactionOptions) error
-    func SaveStruct(src interface{}, c chan<- Property) error
-    type Cursor
-        func DecodeCursor(s string) (Cursor, error)
-        func (c Cursor) String() string
-    type ErrFieldMismatch
-        func (e *ErrFieldMismatch) Error() string
-    type Iterator
-        func (t *Iterator) Cursor() (Cursor, error)
-        func (t *Iterator) Next(dst interface{}) (*Key, error)
-    type Key
-        func DecodeKey(encoded string) (*Key, error)
-        func NewIncompleteKey(c appengine.Context, kind string, parent *Key) *Key
-        func NewKey(c appengine.Context, kind, stringID string, intID int64, parent *Key) *Key
-        func (k *Key) AppID() string
-        func (k *Key) Encode() string
-        func (k *Key) Equal(o *Key) bool
-        func (k *Key) GobDecode(buf []byte) error
-        func (k *Key) GobEncode() ([]byte, error)
-        func (k *Key) Incomplete() bool
-        func (k *Key) IntID() int64
-        func (k *Key) Kind() string
-        func (k *Key) MarshalJSON() ([]byte, error)
-        func (k *Key) Parent() *Key
-        func (k *Key) String() string
-        func (k *Key) StringID() string
-        func (k *Key) UnmarshalJSON(buf []byte) error
-    type Property
-    type PropertyList
-        func (l *PropertyList) Load(c <-chan Property) error
-        func (l *PropertyList) Save(c chan<- Property) error
-    type PropertyLoadSaver
-    type Query
-        func NewQuery(kind string) *Query
-        func (q *Query) Ancestor(ancestor *Key) *Query
-        func (q *Query) Count(c appengine.Context) (int, error)
-        func (q *Query) Distinct() *Query
-        func (q *Query) End(c Cursor) *Query
-        func (q *Query) Filter(filterStr string, value interface{}) *Query
-        func (q *Query) GetAll(c appengine.Context, dst interface{}) ([]*Key, error)
-        func (q *Query) KeysOnly() *Query
-        func (q *Query) Limit(limit int) *Query
-        func (q *Query) Offset(offset int) *Query
-        func (q *Query) Order(fieldName string) *Query
-        func (q *Query) Project(fieldNames ...string) *Query
-        func (q *Query) Run(c appengine.Context) *Iterator
-        func (q *Query) Start(c Cursor) *Query
-    type TransactionOptions
+* Variables
+* func AllocateIDs(c appengine.Context, kind string, parent \*Key, n int) (low, high int64, err error)
+* func Delete(c appengine.Context, key \*Key) error
+* func DeleteMulti(c appengine.Context, key []\*Key) error
+* func Get(c appengine.Context, key \*Key, dst interface{}) error
+* func GetMulti(c appengine.Context, key []\*Key, dst interface{}) error
+* func LoadStruct(dst interface{}, c <-chan Property) error
+* func Put(c appengine.Context, key \*Key, src interface{}) (*Key, error)
+* func PutMulti(c appengine.Context, key []\*Key, src interface{}) ([]\*Key, error)
+* func RunInTransaction(c appengine.Context, f func(tc appengine.Context) error, opts \*TransactionOptions) error
+* func SaveStruct(src interface{}, c chan<- Property) error
+* type Cursor
+ *    func DecodeCursor(s string) (Cursor, error)
+ *    func (c Cursor) String() string
+* type ErrFieldMismatch
+ *    func (e \*ErrFieldMismatch) Error() string
+* type Iterator
+ *    func (t \*Iterator) Cursor() (Cursor, error)
+ *    func (t \*Iterator) Next(dst interface{}) (\*Key, error)
+* type Key
+ *    func DecodeKey(encoded string) (\*Key, error)
+ *    func NewIncompleteKey(c appengine.Context, kind string, parent \*Key) *Key
+ *    func NewKey(c appengine.Context, kind, stringID string, intID int64, parent \*Key) \*Key
+ *    func (k \*Key) AppID() string
+ *    func (k \*Key) Encode() string
+ *    func (k \*Key) Equal(o \*Key) bool
+ *    func (k \*Key) GobDecode(buf []byte) error
+ *    func (k \*Key) GobEncode() ([]byte, error)
+ *    func (k \*Key) Incomplete() bool
+ *    func (k \*Key) IntID() int64
+ *    func (k \*Key) Kind() string
+ *    func (k \*Key) MarshalJSON() ([]byte, error)
+ *    func (k \*Key) Parent() \*Key
+ *    func (k \*Key) String() string
+ *    func (k \*Key) StringID() string
+ *    func (k \*Key) UnmarshalJSON(buf []byte) error
+* type Property
+* type PropertyList
+ *    func (l \*PropertyList) Load(c <-chan Property) error
+ *    func (l \*PropertyList) Save(c chan<- Property) error
+* type PropertyLoadSaver
+* type Query
+ *    func NewQuery(kind string) \*Query
+ *    func (q \*Query) Ancestor(ancestor \*Key) \*Query
+ *    func (q \*Query) Count(c appengine.Context) (int, error)
+ *    func (q \*Query) Distinct() \*Query
+ *    func (q \*Query) End(c Cursor) \*Query
+ *    func (q \*Query) Filter(filterStr string, value interface{}) \*Query
+ *    func (q \*Query) GetAll(c appengine.Context, dst interface{}) ([]\*Key, error)
+ *    func (q \*Query) KeysOnly() \*Query
+ *    func (q \*Query) Limit(limit int) \*Query
+ *    func (q \*Query) Offset(offset int) \*Query
+ *    func (q \*Query) Order(fieldName string) \*Query
+ *    func (q \*Query) Project(fieldNames ...string) \*Query
+ *    func (q \*Query) Run(c appengine.Context) \*Iterator
+ *    func (q \*Query) Start(c Cursor) \*Query
+* type TransactionOptions
 
-Variables
+## Variables
 
-var (
-    // ErrInvalidEntityType is returned when functions like Get or Next are
-    // passed a dst or src argument of invalid type.
-    ErrInvalidEntityType = errors.New("datastore: invalid entity type")
-    // ErrInvalidKey is returned when an invalid key is presented.
-    ErrInvalidKey = errors.New("datastore: invalid key")
-    // ErrNoSuchEntity is returned when no entity was found for a given key.
-    ErrNoSuchEntity = errors.New("datastore: no such entity")
-)
+    var (
+        // ErrInvalidEntityType is returned when functions like Get or Next are
+        // passed a dst or src argument of invalid type.
+        ErrInvalidEntityType = errors.New("datastore: invalid entity type")
+        // ErrInvalidKey is returned when an invalid key is presented.
+        ErrInvalidKey = errors.New("datastore: invalid key")
+        // ErrNoSuchEntity is returned when no entity was found for a given key.
+        ErrNoSuchEntity = errors.New("datastore: no such entity")
+    )
 
-var Done = errors.New("datastore: query has no more results")
+    var Done = errors.New("datastore: query has no more results")
 
 Done is returned when a query iteration has completed.
 
-var ErrConcurrentTransaction = errors.New("datastore: concurrent transaction")
+    var ErrConcurrentTransaction = errors.New("datastore: concurrent transaction")
 
 ErrConcurrentTransaction is returned when a transaction is rolled back due to a conflict with a concurrent transaction.
-func AllocateIDs
 
-func AllocateIDs(c appengine.Context, kind string, parent *Key, n int) (low, high int64, err error)
+## func AllocateIDs
+
+    func AllocateIDs(c appengine.Context, kind string, parent *Key, n int) (low, high int64, err error)
 
 AllocateIDs returns a range of n integer IDs with the given kind and parent combination. kind cannot be empty; parent may be nil. The IDs in the range returned will not be used by the datastore's automatic ID sequence generator and may be used with NewKey without conflict.
 
