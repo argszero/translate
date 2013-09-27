@@ -49,7 +49,7 @@ The Get and Put functions load and save an entity's contents. An entity's conten
 Get和Put方法用来加载和保存entity内容。entity的内容一般通过一个结构体指针来描述。
 
 Example code:
-
+```go
     type Entity struct {
         Value string
     }
@@ -75,7 +75,7 @@ Example code:
         w.Header().Set("Content-Type", "text/plain; charset=utf-8")
         fmt.Fprintf(w, "old=%q\nnew=%q\n", old, e.Value)
     }
-
+```
 GetMulti, PutMulti and DeleteMulti are batch versions of the Get, Put and Delete functions. They take a []\*Key instead of a \*Key, and may return an appengine.MultiError when encountering partial failure.
 
 GetMulti,PutMulti 和 DeleteMulti是Get,Put和Delete方法的批量化版本。它们接收一个[]\*Key 而不是一个\*Key，当部分失败时，返回一个appengine.MultiError。
