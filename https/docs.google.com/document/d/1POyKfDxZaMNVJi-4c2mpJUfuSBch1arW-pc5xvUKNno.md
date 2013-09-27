@@ -5,7 +5,7 @@ https://docs.google.com/document/d/1POyKfDxZaMNVJi-4c2mpJUfuSBch1arW-pc5xvUKNno
 
 NOTE: This is a working draft. Notes are being collected and will be edited for readability.
 
-注意：这是一个工作草案。Notes are being collected and will be edited for readability.
+注意：这是一个工作草案。收集意见还在进行中，而且还会修改以提高可读性。
 
 
 
@@ -14,118 +14,119 @@ NOTE: This is a working draft. Notes are being collected and will be edited for 
 
 This document describes the state of security in a Hadoop YARN cluster.  First, this document describes the following entities and their interactions in a secure Hadoop cluster: tokens, principals, authentication mechanisms, authenticating parties, authorization mechanisms, authorized parties, and execution environment. Second, it examines these entities through the lens of adherence to commonly held security principles.
 
-本文档描述了Hadoop YARN集群里的安全状态。首先，本文档描述了在一个安全的Hadoop集群里下面这几种实体以及他们之间的交互：tokens, principals, authentication mechanisms, authenticating parties, authorization mechanisms, authorized parties, 以及 execution environment。第二，it examines these entities through the lens of adherence to commonly held security principles。
+本文档描述了Hadoop YARN集群里的安全状态。首先，本文档描述了在一个安全的Hadoop集群里下面这几种实体以及他们之间的交互：tokens, principals, authentication mechanisms, authenticating parties, authorization mechanisms, authorized parties, 以及 execution environment。第二，它采用通用的安全原则来审视所有的
 
 
 
 ## Tokens
 ## Tokens
 
-In general, tokens are added to the current
-[UGI](http://hadoop.apache.org/docs/stable/api/org/apache/hadoop/security/UserGroupInformation.html)?(UserGroupInformation.java).
-?This results in those tokens being added as credentials to the
-[JAAS](http://docs.oracle.com/javase/7/docs/technotes/guides/security/jaas/JAASRefGuide.html)[?](http://docs.oracle.com/javase/7/docs/technotes/guides/security/jaas/JAASRefGuide.html)[Subject](http://docs.oracle.com/javase/7/docs/technotes/guides/security/jaas/JAASRefGuide.html#Subject)[?](http://docs.oracle.com/javase/7/docs/technotes/guides/security/jaas/JAASRefGuide.html#Subject)associated
-with that UGI. ?An RPC call is then made in the context of a
-UGI.doAs?which pushes the Subject onto the thread context.
+In general, tokens are added to the current [UGI](http://hadoop.apache.org/docs/stable/api/org/apache/hadoop/security/UserGroupInformation.html)(UserGroupInformation.java). This results in those tokens being added as credentials to the [JAAS](http://docs.oracle.com/javase/7/docs/technotes/guides/security/jaas/JAASRefGuide.html) [Subject](http://docs.oracle.com/javase/7/docs/technotes/guides/security/jaas/JAASRefGuide.html#Subject)associated with that UGI. An RPC call is then made in the context of a `UGI.doAs` which pushes the Subject onto the thread context.
 
-When a connection to a server is created, an appropriate token is
-selected from a UGI created from the current JAAS Subject. ?This can be
-seen in the getProtocolProxy methods of the RPC class:
-hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/ipc/RPC.java.
+大体上，就是在UGI上添加了tokens。这些tokens作为凭据(credentials)添加到UGI的[JAAS](http://docs.oracle.com/javase/7/docs/technotes/guides/security/jaas/JAASRefGuide.html) [Subject](http://docs.oracle.com/javase/7/docs/technotes/guides/security/jaas/JAASRefGuide.html#Subject)里。在`UGI.doAs` context里做了一个将Subject添加到线程context的RPC调用。
 
-This selection is based on the type of server to which the connection is
-being established and the type of token it requires. ?(See Connector
-constructor in
+When a connection to a server is created, an appropriate token is selected from a UGI created from the current JAAS Subject. This can be seen in the getProtocolProxy methods of the RPC class: hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/ipc/RPC.java.
+
+在到server端的连接创建时，从当前JAAS Subject创建的UGI里选取一个合适的token。可以参考RPC类里的getProtocolProxy方法。：hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/ipc/RPC.java.
+
+This selection is based on the type of server to which the connection is being established and the type of token it requires. (See Connector constructor in
 hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/ipc/Client.java.)
 
-See method getProxy (lines 182-198) in ClientServiceDelegate for an
-example of how tokens are set up by clients:
-?hadoop-mapreduce-project/hadoop-mapreduce-client/hadoop-mapreduce-client-jobclient/src/main/java/org/apache/hadoop/mapred/ClientServiceDelegate.java.
+这个选择是基于要连接到的server的类型以及它所需要的token类型来决定的。(参考hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/ipc/Client.java里Connector的构造哈函数）
 
-Each service that generates tokens has a master key that is used to
-generate a?Message Authentication Code?(MAC) for the token. This is also
-referred to as the token password. Servers store their master key in a
-SecretManager used with each RPC server. ?In several situations this
-master key is distributed between master and slaves services by
-registration or heartbeat interactions initiated by the slave services.
+See method getProxy (lines 182-198) in ClientServiceDelegate for an example of how tokens are set up by clients: hadoop-mapreduce-project/hadoop-mapreduce-client/hadoop-mapreduce-client-jobclient/src/main/java/org/apache/hadoop/mapred/ClientServiceDelegate.java.
+
+参考ClientServiceDelegate的getProxy方法(182-198行)来理解client是如何建立tokend的：hadoop-mapreduce-project/hadoop-mapreduce-client/hadoop-mapreduce-client-jobclient/src/main/java/org/apache/hadoop/mapred/ClientServiceDelegate.java.
+
+Each service that generates tokens has a master key that is used to generate a `Message Authentication Code(MAC)` for the token. This is also referred to as the token password. Servers store their master key in a SecretManager used with each RPC server. In several situations this master key is distributed between master and slaves services by registration or heartbeat interactions initiated by the slave services.
+
+每个生成token的服务都有一个master key用来生成token的 `Message Authentication Code(MAC)` 。我们也把它称为token密码。服务将master key保存在SecretManager给每个RPC server使用。在很多情况下，master key在master和slave服务之间的分发通过由slave 服务发起的注册或心跳进行。
 
 ![](1POyKfDxZaMNVJi-4c2mpJUfuSBch1arW-pc5xvUKNno/images/image04.png)
 
-* * * * *
+## Principals 
+## 主角
 
-Principals {.c1}
-==========
+Here we define the entities that may be authenticated and granted rights within a Hadoop cluster.
 
-* * * * *
+我们在这里定义Hadoop集群里要被认证和授权的实体。
 
-Here we define the entities that may be authenticated and granted rights
-within a Hadoop cluster.
+### User 
+### 用户
 
-User {.c1}
-----
-
-Users are internally represented within Hadoop as simple strings. ?At
-the boundaries various mechanisms are used to derive these simple
-strings. ?For example these could be derived from a Kerberos principal
-exchanged via
-[SASL](http://en.wikipedia.org/wiki/Simple_Authentication_and_Security_Layer)?or
-[SPNego](http://en.wikipedia.org/wiki/SPNEGO). ?They could also be
-derived from the OS user running the client process. ?This user
-information is collected in an object that is frequently referred to as
-the
-[UGI](http://hadoop.apache.org/docs/stable/api/org/apache/hadoop/security/UserGroupInformation.html)?(UserGroupInformation.java):
+Users are internally represented within Hadoop as simple strings. At the boundaries various mechanisms are used to derive these simple strings. For example these could be derived from a Kerberos principal exchanged via [SASL](http://en.wikipedia.org/wiki/Simple_Authentication_and_Security_Layer)or [SPNego](http://en.wikipedia.org/wiki/SPNEGO). They could also be derived from the OS user running the client process. This user information is collected in an object that is frequently referred to as the [UGI](http://hadoop.apache.org/docs/stable/api/org/apache/hadoop/security/UserGroupInformation.html)(UserGroupInformation.java):
 
 hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/security/UserGroupInformation.java.
 
-Group information is also represented internally within Hadoop as a
-simple collection of strings. ?This group information is also carried
-with the UGI. ?There is a pluggable mechanism by which a user name is
-resolved into a list of groups. ?This plugin mechanism is called
-GropuMappingServiceProvider:
+
+在Hadoop内部采用简单的字符串表示用户。有多种机制产生这些简单字符串。比如可以通过 [SASL](http://en.wikipedia.org/wiki/Simple_Authentication_and_Security_Layer)或[SPNego](http://en.wikipedia.org/wiki/SPNEGO)进行Kerberos principal交换时产生。也可以通过跑客户端的操作系统用户产生。用户信息被收集在一个通常称为 [UGI](http://hadoop.apache.org/docs/stable/api/org/apache/hadoop/security/UserGroupInformation.html)(UserGroupInformation.java)的对象中：
+
+hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/security/UserGroupInformation.java.
+
+Group information is also represented internally within Hadoop as a simple collection of strings. This group information is also carried with the UGI. There is a pluggable mechanism by which a user name is resolved into a list of groups. This plugin mechanism is called GropuMappingServiceProvider:
 
 hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/security/GroupMappingServiceProvider.java.
-You can see how these plugins are utilized by looking at the getGroups
-method of the Groups class:
+
+在Hadoop内部通常采用一个简单字符串集合表示组信息。组信息同样在UGI中。通过一个插件化的机制，可以将一个用户名解析何曾一组组信息。这个机制称为GropuMappingServiceProvider:
+
+hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/security/GroupMappingServiceProvider.java.
+
+
+You can see how these plugins are utilized by looking at the getGroups method of the Groups class:
 hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/security/Groups.java
 
-Core Services {.c1}
--------------
+可以通过查看Group类的getGroups方法查看这些插件是如何使用的：
+hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/security/Groups.java
 
-For each of the core services within a Hadoop cluster there is an
-associated Kerberos UPN. These UPNs are utilized for server-server and
-client-server interactions. The expected UPN values for each service are
-stored in the Hadoop configuration files. The service credentials are
-stored in keytab files and protected by native filesystem permissions.
+### Core Services
+### 核心服务
 
-[](#)[](#)
+For each of the core services within a Hadoop cluster there is an associated Kerberos UPN. These UPNs are utilized for server-server and client-server interactions. The expected UPN values for each service are stored in the Hadoop configuration files. The service credentials are stored in keytab files and protected by native filesystem permissions.
 
-Service
+对于Hadoop集群里的每个核心服务都有一个对应的Kerberos UPN。这些UPN用来server-server以及client-server的交互。在Hadoop的配置文件里有保存的每个服务期望的UPN。服务的凭证保存在keytab文件中，通过本地文件系统权限来保护。
 
-Description
+<table>
+    <tr>
+        <td>Service</td> <td>Description</td>
+    </tr>
+    <tr>
+        <td>HDFS NameNode</td> <td>Stores backup of HDFS meta datalogs.</td>
+    </tr>
+    <tr>
+        <td>HDFS DataNode</td> <td>Manages HDFS data blocks.</td>
+    </tr>
+    <tr>
+        <td>YARN ResourceManager</td> <td>Schedules container execution within a cluster.</td>
+    </tr>
+    <tr>
+        <td>YARN NodeManager</td> <td>Manages container execution and shuffle results on one machine.</td>
+    </tr>
+    <tr>
+        <td>MapReduce JobHistory Server</td> <td>Manages job history across a cluster.</td>
+    </tr>
+</table>
 
-HDFS NameNode
 
-Manages HDFS meta data. Central point of HDFS access.
-
-HDFS Secondary NameNode
-
-Stores backup of HDFS meta datalogs.
-
-HDFS DataNode
-
-Manages HDFS data blocks.
-
-YARN ResourceManager
-
-Schedules container execution within a cluster.
-
-YARN NodeManager
-
-Manages container execution and shuffle results on one machine.
-
-MapReduce JobHistory Server
-
-Manages job history across a cluster.
+<table>
+    <tr>
+        <td>服务</td> <td>描述</td>
+    </tr>
+    <tr>
+        <td>HDFS NameNode</td> <td>保存HDFS原数据</td>
+    </tr>
+    <tr>
+        <td>HDFS DataNode</td> <td>管理HDFS数据block</td>
+    </tr>
+    <tr>
+        <td>YARN ResourceManager</td> <td>调度集群里执行的container</td>
+    </tr>
+    <tr>
+        <td>YARN NodeManager</td> <td>管理在某个机器上container的执行以及混洗结果</td>
+    </tr>
+    <tr>
+        <td>MapReduce JobHistory Server</td> <td>管理集群里的Job历史</td>
+    </tr>
+</table>
 
 Container {.c1}
 ---------
