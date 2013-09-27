@@ -162,14 +162,18 @@ Email morphlines 库会进行下述操作：
 
 To view the full Morphline configuration file for this example, please visit this [link](https://github.com/jshmain/cloudera-search/blob/master/email-search/morphlines.conf).
 
+可以从 [这里](https://github.com/jshmain/cloudera-search/blob/master/email-search/morphlines.conf) 查看本例中Morphline的完整配置。
 
-
-
-Which Tool to Use for Indexing
+## Which Tool to Use for Indexing
+## 使用哪个工具在做索引
 
 Cloudera Search can index emails in various ways. In a near-real-time scenario, Cloudera Search will utilize Flume to index messages on their way into HDFS.  As the data passes through Flume, relevant fields will be extracted using MorphlineSolrSink. Solr will then index the event and write the indexes to HDFS. For the batch-oriented scenarios, Cloudera Search provides MapReduceIndexerTool, which will read the data out of HDFS, build the indexes, and write them out back to HDFS. There are multiple options in the tool, including one that will merge the generated indexes into live Solr Servers.
 
+Cloudera Search可以有多种方式来给email做索引。在近实时的场景下，Cloudera Search使用Flume来给正在写入HDFS途中的消息做索引。当消息在Flume中传递时，使用MorphlineSolrSink提取出相关字段。然后Solr给这个时间做索引并将索引写入到HDFS。在面向批处理的场景下，Cloudera Search提供了一个MapReduceIndexTool，这个工具读取HDFS中的数据，构建索引，然后将索引回写到HDFS。这个工具有很多选项，包括一个将索引merge到一个在线的Solr Server上的选项。
+
 The appropriate indexing method will be dictated entirely by your use case and data ingestion strategy. For example, if you are doing customer churn analysis, you may initiate a periodic search query for words that signify a negative sentiment. As emails from customers come into the system, you may need to persist and index them right away. In that case, the indexing must be done in near-real-time and the data would be ingested through a Flume Agent. But suppose you already have five years of emails already stored on HDFS?  If you need to index them, the only scalable option is to run MapReduceIndexerTool.
+
+选择哪种做索引的方法取决于你的用例和集成策略。例如，如果你在做客户流失分析，你可能需要启动一个定期的查询带有负面信息的词汇。在客户邮件进入系统时，你需要将其持久化并正确的生成索引。在这种用例下，索引必须采用近实时的方式生成，数据应该通过Flume Agent开始分析。但是，假设你已经有5年的email保存在HDFS上，如果你需要对他们做索引，你的选项就应该是跑一下MapReduceIndexerTool
 
 In some use cases, both methods may be needed. For example, if most of the emails are indexed in real time but later on you identify a new field that was not indexed before, you may need to go back and run MapReduceIndexerTool to reindex the whole corpus. (There is an HBase near-real time indexer as well, but we’ll address that in a future post.)
 
