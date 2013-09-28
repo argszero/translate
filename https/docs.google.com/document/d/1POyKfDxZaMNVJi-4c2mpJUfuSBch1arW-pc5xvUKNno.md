@@ -128,293 +128,188 @@ For each of the core services within a Hadoop cluster there is an associated Ker
     </tr>
 </table>
 
-Container {.c1}
----------
+### Container
+### 容器
 
-At its core YARN provides the ability to execute user code across
-machines in a cluster. This user code is executed in an environment
-called a container. Each container has an identity (ContainerId) and
-associated token (ContainerTokenIdentifier) created by the
-ResourceManager. ?
+At its core YARN provides the ability to execute user code across machines in a cluster. This user code is executed in an environment called a container. Each container has an identity (ContainerId) and associated token (ContainerTokenIdentifier) created by the ResourceManager. 
 
-A Container token is required to access the ContainerManager?network
-interface which is hosted in the NodeManager. These Container tokens are
-held by the ApplicationMaster that created the container. The master
-secret for token creation is controlled by the ResourceManager. ?The
-ResourceManager?is the issuing party for tokens.
+YARN的核心功能是在集群中的不同机器上运行用户程序。用户程序在一个成为容器的环境中运行。每个容器有一个标识（ContainerId）和一个关联的由ResourceManager创建的token（ContainerTokenIdentifier）
 
-Job {.c1}
----
+A Container token is required to access the ContainerManager network interface which is hosted in the NodeManager. These Container tokens are held by the ApplicationMaster that created the container. The master secret for token creation is controlled by the ResourceManager. The ResourceManager is the issuing party for tokens.
 
-At this time Map Reduce is the mostly commonly deployed YARN
-application. A job is one the of concepts that exists at the MR
-application level. A job identity (JobId) is created by the MapReduce
-ApplicationMaster. The JobId is contained within a Job token
-(JobTokenIdentifier). ?The Job token is used by all Job tasks for mutual
-authentication when communicating with the MapReduce ApplicationMaster.
+需要出示Container token来访问NodeManager上的ContainerManager network接口。这些Container token都在创建这些容器的ApplicationManager手里。创建token的master secret由ResourceManager控制。ResourceManager是这些token的发行方。
 
-Application {.c1}
------------
+### Job
+### 作业
 
-An application instance has an identity (ApplicationId) and a token
-(ApplicationToken) created by the ResourceManager. ?A client will
-utilize an application id to uniquely identify an application instance.
-The identity is requested by the client via
-ClientRMService.getNewApplicationId(). ?The ApplicationMaster may also
-identify itselft to the system using this ID.
+At this time Map Reduce is the mostly commonly deployed YARN application. A job is one the of concepts that exists at the MR application level. A job identity (JobId) is created by the MapReduce ApplicationMaster. The JobId is contained within a Job token (JobTokenIdentifier). The Job token is used by all Job tasks for mutual authentication when communicating with the MapReduce ApplicationMaster.
 
-Localizer {.c1}
----------
+目前Map Reduce是最常见的YARN应用。作业是MR应用层次上的一个概念。Job标识（JobId）是由MapReduce ApplicationMaster创建的。JobId里包含一个Job token(JobTokenIdentifier)。Job的任务在和MapReduce ApplicationMaster交互时使用这个Job Token相互认证。
 
-A Localizer is a short lived process launched by the NodeManager. ?It is
-responsible for setting up the execution environment for a task. ?This
-includes extracting the required job files from HDFS to the local file
-system. A Localizer’s?identity is represented by a
-LocalizerTokenIdentifier that allows the Localizer to report status back
-to the launching NameNode.
+### Application
+### 应用
 
-Node {.c1}
-----
+An application instance has an identity (ApplicationId) and a token (ApplicationToken) created by the ResourceManager. A client will utilize an application id to uniquely identify an application instance.  The identity is requested by the client via  `ClientRMService.getNewApplicationId()`. The ApplicationMaster may also identify itselft to the system using this ID.
 
-A?NodeManager represents each node (computer) in a cluster.? Each
-NodeManager has a unique Kerberos principal associated with it. ?The
-NodeManagers are always running and interact with the ResourceManager to
-provide information about the state of the node and the
-ApplicationMasters to execute tasks.
+应用实例有一个标识（ApplicationId）以及一个由ResourceManager创建的token(ApplicationToken）。客户端通过application id来识别唯一的应用实例。客户端通过`ClientRMService.getNewApplicationId()`请求这个身份标识。ApplicationMaster也使用这个ID来向系统标明自己的身份。
 
-Resources {.c1}
-=========
+### Localizer 
+### Localizer
+
+A Localizer is a short lived process launched by the NodeManager. It is responsible for setting up the execution environment for a task. This includes extracting the required job files from HDFS to the local file system. A Localizer’s identity is represented by a LocalizerTokenIdentifier that allows the Localizer to report status back to the launching NameNode.
+
+Localizer是由NodeManager启动的一个生命周期较短的进程。它负责为task建立执行环境。包括从HDFS抽取出job文件到本地系统。Localizer由LocalizerTokenIdentifier来表明身份以允许Localizer向NameNode报告状态。
+
+### Node
+### 节点
+
+A NodeManager represents each node (computer) in a cluster. Each NodeManager has a unique Kerberos principal associated with it. The NodeManagers are always running and interact with the ResourceManager to provide information about the state of the node and the ApplicationMasters to execute tasks.
+
+NodeManger是集群中每个node（机器）的代理。每个NodeManager关联一个唯一的Kerberos principal。NodeManager会一直运行并且和ResourceManager交互来提供node状态以及ApplicationMaster执行任务的状态信息。
+
+### Resources 
+### 资源
 
 TODO - Overview
+敬请期待 - 概述
 
-Block {.c1}
------
+### Block
+### Block
 
-A block of data within HDFS is identified by a 64-bit integer. The
-NameNode allocates a block identifier when data is written to a file.
-The NameNode also stores metadata for this block identifier. The
-metadata tracks the association between a file and its blocks, and
-between blocks the DataNodes on which they are stored (included
-replicas). The lifecycle of a block identifier is controlled by the
-owner of the file to which the block belongs. A block identifier becomes
-invalid once the file to which it belongs is deleted.
+A block of data within HDFS is identified by a 64-bit integer. The NameNode allocates a block identifier when data is written to a file.  The NameNode also stores metadata for this block identifier. The metadata tracks the association between a file and its blocks, and between blocks the DataNodes on which they are stored (included replicas). The lifecycle of a block identifier is controlled by the owner of the file to which the block belongs. A block identifier becomes invalid once the file to which it belongs is deleted.
 
-Shuffle Data (user/Job Identifier/Map Identifier) {.c1}
--------------------------------------------------
+HDFS里的block数据通过一个64位整型来表示。在向文件写数据时由NameNode分配block标识。NameNode还保存了这个block标识的元数据。元数据记录了file和block之间的关联，以及那些DataNodes保存了这个block（包括副本）。
 
-Shuffle data is the output of the Map portion of a MapReduce job. ?It is
-generated by the Map task and stored on the local file system where the
-Map task was executed. ?When the Reduce task of a MapReduce job is run,
-this data is fetched by accessing a NodeManager component called the
-ShuffleHandler. ?This is necessary because Reduce tasks may not be run
-on the same node as the Map task. ?Shuffle data?is identified by three
-pieces of information.
+### Shuffle Data (user/Job Identifier/Map Identifier)
+### 混洗数据 (user/Job Identifier/Map Identifier)
+
+Shuffle data is the output of the Map portion of a MapReduce job. It is generated by the Map task and stored on the local file system where the Map task was executed. When the Reduce task of a MapReduce job is run, this data is fetched by accessing a NodeManager component called the ShuffleHandler. This is necessary because Reduce tasks may not be run on the same node as the Map task. Shuffle data is identified by three pieces of information.
+
+混洗数据时MapReduce作业的Map部分的输出数据。它有Map任务产生，保存在Map执行的本地文件系统。当MapReduce作业的Reduce任务开始执行时，这里的数据通过访问称为ShuffleHandler的NodeManager组件来获取。这是因为Reduce任务不一定和Map任务在同一个节点上执行。混洗数据通过三种信息标识。
 
 1.  user - The user that submitted the job.
-2.  Job Identifier - The job identifier provided by the ResourceManager
-    when the job was being defined.
-3.  Map Identifier - The identifier assigned by the MapReduce
-    ApplicationMaster when the the Map task was executed. ?This is an
-    instance of TaskAttemptID.
+2.  Job Identifier - The job identifier provided by the ResourceManager when the job was being defined.
+3.  Map Identifier - The identifier assigned by the MapReduce ApplicationMaster when the the Map task was executed. This is an instance of TaskAttemptID.
 
-The shuffle data is stored on the local file system of the Map tasks and
-is protected by OS privileges such that it is only accessible to the
-mapred user. ?The location of this data on the local file system is
-partitioned using the identifiers above. ?See
-ShuffleHandler.sendMapOutput()?for details.
+1. 用户 - 提交作业的用户
+2. Job 标识符 - 在定义job时由ResourceManager提供的作业标识符
+3. Map 标识符 - 在Map task执行时由MapReduce ApplicationMaster分配的标识符。它是TaskAttempt的实例
 
-* * * * *
+The shuffle data is stored on the local file system of the Map tasks and is protected by OS privileges such that it is only accessible to the mapred user. The location of this data on the local file system is partitioned using the identifiers above. See `ShuffleHandler.sendMapOutput()` for details.
 
-Authentication Mechanisms {.c1}
-=========================
+混洗数据保存在Map任务所在的本地文件系统中，由OS权限来保护，使得只能由mapred用户访问。数据在本地文件系统保存的位置根据上述标识符来分区。更多细节请参考`ShuffleHandler.sendMapOutput()`
 
-* * * * *
+## Authentication Mechanisms
+## 认证机制
 
 For each method of principal assertion:
-
-????????- Describe the mechanism
-
+- Describe the mechanism
 - what principal is asserted
 
-Kerberos {.c1}
---------
+对principal assertion的每个方法：
+- 描述机制
+- 期望是什么principal
 
-Kerberos is a technology developed by MIT in the 1980s as part of
-Project Athena and X Window System. ?Kerberos is designed to provide
-mutual authentication for two nodes (users or services) over an insecure
-network. ?Kerberos enables this by introducing a trusted third party
-called the Key Distribution Center or KDC. ?For more information, see
-[Kerberos
-V4](http://www.cs.ucsb.edu/~koc/ns/docs/kaufman/10kerbv4.pdf)?and
-[Kerberos V5](http://www.cs.ucsb.edu/~koc/ns/docs/kaufman/11kerbv5.pdf).
+### Kerberos
+### Kerberos
 
-In Hadoop, Kerberos is used for mutual authentication in two cases: ?1)
-mutual authentication between clients and services, and 2) ?mutual
-authentication between services. ?(In this paper, these two cases will
-be covered separately as their characteristics are
-different.).?Authentication of services to clients and/or other services
-is to prevent “trojan” services from masquerading as Hadoop services.
+Kerberos is a technology developed by MIT in the 1980s as part of Project Athena and X Window System. Kerberos is designed to provide mutual authentication for two nodes (users or services) over an insecure network. Kerberos enables this by introducing a trusted third party called the Key Distribution Center or KDC. For more information, see [Kerberos V4](http://www.cs.ucsb.edu/~koc/ns/docs/kaufman/10kerbv4.pdf) and [Kerberos V5](http://www.cs.ucsb.edu/~koc/ns/docs/kaufman/11kerbv5.pdf).
 
-NOTE: Kerberos is not the only way that clients and services
-authenticate to one another. ?Hadoop has a token model that augments and
-complements Kerberos for many interactions. ?Typically Kerberos secured
-interfaces are used to acquire these tokens and then those tokens are
-used from that point forward for authentication.
+Kerberos是由MIT在1980年为Athena项目和X Window系统开发出来的一种技术。Kerberos的设计目标是为安全网络上的两个节点（用户或服务）提供相互认证。Kerberos通过引入一个可信的第三方来实现这个目标，这个第三方即Key Distribution Center或KDC。更多细节请参考[Kerberos V4](http://www.cs.ucsb.edu/~koc/ns/docs/kaufman/10kerbv4.pdf) 和 [Kerberos V5](http://www.cs.ucsb.edu/~koc/ns/docs/kaufman/11kerbv5.pdf)。
 
-### Client/Service {.c1}
+In Hadoop, Kerberos is used for mutual authentication in two cases: 1) mutual authentication between clients and services, and 2) mutual authentication between services. (In this paper, these two cases will be covered separately as their characteristics are different.).Authentication of services to clients and/or other services is to prevent “trojan” services from masquerading as Hadoop services.
 
-Kerberos is required for client authentication with any service that
-issues delegation tokens (e.g. NameNode, ResourceManager,
-HistoryServer).?(Note that the delegation tokens issued by these
-services are Hadoop-specific delegation tokens and have no relationship
-to the Kerberos delegation mechanism introduced in Kerberos V5.)
-?Kerberos may also be used for client authentication with services that
-do not issue delegation tokens (e.g. Oozie). Some of these services
-(such as Oozie) may need to need to provide the client identity when
-communicating to core services. Kerberos delegation is not used in these
-cases. Instead, core services can be configured to allow the
-specification of a “proxy user” from the superuser principal. (For more
-information, see [Secure Impersonation using
-UserGroupInformation.doAs](http://hadoop.apache.org/docs/stable/Secure_Impersonation.html).)
+在Hadoop中，在两种情况下使用Kerberos做相互认证：1）客户端和服务之间的相互认证。 2）服务之间的相互认证。（在本文中，由于这两种场景的特征不同，所以分开描述）。服务到客户端的认证或服务到其他服务的认证是用来阻止伪装成Hadoop服务的"trojan"服务。
+
+NOTE: Kerberos is not the only way that clients and services authenticate to one another. Hadoop has a token model that augments and complements Kerberos for many interactions. Typically Kerberos secured interfaces are used to acquire these tokens and then those tokens are used from that point forward for authentication.
+
+注意：Kerberos不是客户端和服务相互认证的唯一方式。Hadoop有一个在很多交互中扩展和补充了Kerberos的token模型。一般情况下通过Kerberos安全接口来获取这些token，然后使用这些token来做认证。
+
+### Client/Service 
+### 客户端/服务
+
+Kerberos is required for client authentication with any service that issues delegation tokens (e.g. NameNode, ResourceManager, HistoryServer).(Note that the delegation tokens issued by these services are Hadoop-specific delegation tokens and have no relationship to the Kerberos delegation mechanism introduced in Kerberos V5.) Kerberos may also be used for client authentication with services that do not issue delegation tokens (e.g. Oozie). Some of these services (such as Oozie) may need to need to provide the client identity when communicating to core services. Kerberos delegation is not used in these cases. Instead, core services can be configured to allow the specification of a “proxy user” from the superuser principal. (For more information, see [Secure Impersonation using UserGroupInformation.doAs](http://hadoop.apache.org/docs/stable/Secure_Impersonation.html).)
+
+对于每个发行代理token的服务，Kerberos都要求客户端认证（比如NameNode，ResourceManager，HistoryServer）。（注意，这些服务发行的代理token是Hadoop规定的代理token，跟Kerberos V5引进的代理机制没有关系）。Kerberos还可以用在客户端和非发行代理token的服务之间（比如Oozie）。这些服务中的某些（比如Oozie）可能在和核心服务交互时要求客户端认证。Kerberos代理不是在这种情况下使用的，而是主服务可以被配置为允许从superuser principal定义一个“代理用户”。（更多信息请参考[Secure Impersonation using UserGroupInformation.doAs](http://hadoop.apache.org/docs/stable/Secure_Impersonation.html).)
 
 \<Diagram proxy and non-proxy\>
 
-Two types of protocols support Kerberos authentication:
-[RPC](http://www.google.com/url?q=http%3A%2F%2Fhadoop.apache.org%2Fdocs%2Fstable%2FSecure_Impersonation.html&sa=D&sntz=1&usg=AFQjCNG86PwqtMs3oK3FHmVp8cH6j4ellg)?and
-[HTTP](http://www.w3.org/Protocols/rfc2616/rfc2616.html). The RPC
-protocol uses [SASL
-GSSAPI](http://en.wikipedia.org/wiki/Generic_Security_Services_Application_Program_Interface)?while
-the HTTP protocol uses [SPNego](http://en.wikipedia.org/wiki/SPNEGO).
+Two types of protocols support Kerberos authentication: [RPC](http://www.google.com/url?q=http%3A%2F%2Fhadoop.apache.org%2Fdocs%2Fstable%2FSecure_Impersonation.html&sa=D&sntz=1&usg=AFQjCNG86PwqtMs3oK3FHmVp8cH6j4ellg)and [HTTP](http://www.w3.org/Protocols/rfc2616/rfc2616.html). The RPC protocol uses [SASL GSSAPI](http://en.wikipedia.org/wiki/Generic_Security_Services_Application_Program_Interface) while the HTTP protocol uses [SPNego](http://en.wikipedia.org/wiki/SPNEGO).
 
-### Service/Service {.c1}
+支持Kerberos认证的两种协议： [RPC](http://www.google.com/url?q=http%3A%2F%2Fhadoop.apache.org%2Fdocs%2Fstable%2FSecure_Impersonation.html&sa=D&sntz=1&usg=AFQjCNG86PwqtMs3oK3FHmVp8cH6j4ellg)和[HTTP](http://www.w3.org/Protocols/rfc2616/rfc2616.html)。RPC 协议使用 [SASL GSSAPI](http://en.wikipedia.org/wiki/Generic_Security_Services_Application_Program_Interface) 而HTTP协议使用[SPNego](http://en.wikipedia.org/wiki/SPNEGO).
 
-Kerberos is also used for authentication between Hadoop services that
-will, in turn, not act on behalf of a user. ?(When services will act on
-behalf of a client, tokens are used for authentication.) Authentication
-occurs on initial registration and all subsequent heartbeat interactions
-between DataNodes and NameNodes and between NodeManagers and
-ResourceManagers. To facilitate this, each service has a unique,
-host-specific Kerberos principal. To prevent this from becoming a
-configuration problem, “host generic” service principals (e.g.
-dn/\_HOST@SAMPLE.ORG) are allowed (specified in configuration files).
+### Service/Service 
+### 服务/服务
 
-An important point to mention is that there is no real relationship
-between the Kerberos principal asserted by a given service and the OS
-user running the service. ?The only linkage is that the Keytab for the
-service must be owned and protected by the OS user running the service.
+Kerberos is also used for authentication between Hadoop services that will, in turn, not act on behalf of a user. (When services will act on behalf of a client, tokens are used for authentication.) Authentication occurs on initial registration and all subsequent heartbeat interactions between DataNodes and NameNodes and between NodeManagers and ResourceManagers. To facilitate this, each service has a unique, host-specific Kerberos principal. To prevent this from becoming a configuration problem, “host generic” service principals (e.g.  dn/\_HOST@SAMPLE.ORG) are allowed (specified in configuration files).
 
-### Important Considerations {.c1}
+反过来，Kerberos也可以不代表用户，而用来在Hadoop服务之间认证。（当服务扮演客户端时，使用token做认证）认证在初始化注册以及随后的DataNode和NameNode以及NodeManager和ResourceManager之间的心跳交互时发送。为此，每个服务有一个唯一的，地址绑定的Kerberos principal。为了防止变成一个配置问题，允许使用"host generic"服务 principal（比如： dn/\_HOST@SAMPLE.ORG)(在配置文件中定义）
 
--   All clients accessing a secure Hadoop cluster must have network
-    access to the Kerberos infrastructure (e.g. KDC) used by the Hadoop
-    cluster. ?This can sometimes make it difficult for clients to
-    connect to a secure Hadoop cluster directly from their local
-    computer.
--   Kerberos is very sensitive to DNS configuration. ?On both client and
-    service nodes, the fully qualified host name of each Hadoop service
-    must resolve to the same IP address. ?This can make it difficult to
-    setup Kerberos on a complex network.
 
-Trusted Proxy (doAs) {.c1}
---------------------
+An important point to mention is that there is no real relationship between the Kerberos principal asserted by a given service and the OS user running the service. The only linkage is that the Keytab for the service must be owned and protected by the OS user running the service.
 
-Utility services present a challenge from an authentication perspective.
-?A utility service (such as Oozie) must authenticate a user and then
-perform operations with the user’s identity. ?Delegation tokens cannot
-be used in this situation because they will only be issued for a request
-that was itself directly authenticated using Kerberos. ?For utility
-services to work they need to be able to assert a user’s identity to the
-core services in a different, but trusted way. To facilitate this,
-Hadoop allows for superusers with Kerberos credentials to impersonate
-users without Kerberos credentials. Specification of which users can be
-impersonated (or from which groups users can be impersonated) and from
-which hosts impersonated users can connect is done in the core-site.xml
-configuration file. For example, if a user joe?is configured as a
-trusted proxy user, then superuser oozie can connect to the NameNode via
-Kerberos, but request data using the identity joe?(this is done by
-creating a proxy user ugi object for user ????????).?The NameNode will
-check to make sure that the user joe?can be impersonated?and ensure the
-request originated from an allowed host. Once this has been verified,
-the identity joe?will be trusted?by the NameNode (i.e. Oozie can access
-data using the identity joe). (See
-[http://hadoop.apache.org/docs/stable/Secure\_Impersonation.html](http://hadoop.apache.org/docs/stable/Secure_Impersonation.html)?for
-more information).?
+需要着重指出的是，在给定服务要求的kerberos principal和运行服务的OS用户之间没有真正的关系。唯一的联系是服务的Keytab的拥有者需要时运行这个服务的OS用户。
 
-Block Access Token {.c1}
-------------------
+### Important Considerations
+### 重要贴士
 
-BlockAccessTokens (BATs) are used by HDFS clients (both users and Hadoop
-services) to perform operations on HDFS blocks. When a client requests
-access to a block, the NameNode makes an authorization decision?and
-either issues a BAT to the client or fails the request (see HDFS File
-Permissions?below). The client then presents the BAT to the appropriate
-DataNode. The DataNode checks the token’s authenticity by verifying its
-signature using a shared secret (shared between the DataNode and the
-NameNode). The shared secret is a 64-bit random key exchanged between
-the NameNode and each DataNode when DataNodes report status to the
-NameNode (heartbeats). ?The NameNode uses the shared secret key to sign
-all BATs with HmacSHA1. ?The DataNode implicitly trusts the authenticity
-of the client’s identity asserted via the BlockAccessToken as a result
-of the signature validation.
+-   All clients accessing a secure Hadoop cluster must have network access to the Kerberos infrastructure (e.g. KDC) used by the Hadoop cluster. This can sometimes make it difficult for clients to connect to a secure Hadoop cluster directly from their local computer.
+-   Kerberos is very sensitive to DNS configuration. On both client and service nodes, the fully qualified host name of each Hadoop service must resolve to the same IP address. This can make it difficult to setup Kerberos on a complex network.
 
-BATs have a limited lifetime, which is?10 hours by default (but is
-configurable via a setting in hdfs-site.xml configuration file). ?BATs
-cannot be renewed but a new one can be requested by client at any time.
-?BATs are not (typically) persistently stored by applications and are
-never stored by a Hadoop service.
+-   对于Hadoop安全集群，所有客户端必须可以通过网络连接到该集群使用的Kerberos基础设施(比如KDC）。有时候这使得客户端从他们本地机器上连接到Hadoop安全集群非常困难。
+-   Kerberos在客户端和服务节点，对DNS配置都是敏感的。每个服务的完整主机名必须可以解析到他的IP。这使得在复杂的网络中部署Kerberos是非常困难的。
 
-BATs are present on the wire using two mechanisms: ?RPC/DTP protocol and
-HTTP protocol using the WebHDFS REST API. ?In both cases the entire BAT
-is sent to the?DataNode along with the signature of the token that was
-generated with the shared secret key.
+### Trusted Proxy (doAs)
+### 可信的代理
 
-The DataXceiver class contains methods writeBlock() and readBlock(),
-which are useful in understanding how the BAT is used. ?The location of
-this class in the Hadoop project is here:
+Utility services present a challenge from an authentication perspective.A utility service (such as Oozie) must authenticate a user and then perform operations with the user’s identity. Delegation tokens cannot be used in this situation because they will only be issued for a request that was itself directly authenticated using Kerberos. For utility services to work they need to be able to assert a user’s identity to the core services in a different, but trusted way. To facilitate this, Hadoop allows for superusers with Kerberos credentials to impersonate users without Kerberos credentials. Specification of which users can be impersonated (or from which groups users can be impersonated) and from which hosts impersonated users can connect is done in the core-site.xml configuration file. For example, if a user joe is configured as a trusted proxy user, then superuser oozie can connect to the NameNode via Kerberos, but request data using the identity joe(this is done by creating a proxy user ugi object for user).The NameNode will check to make sure that the user joe can be impersonated and ensure the request originated from an allowed host. Once this has been verified, the identity joe will be trusted by the NameNode (i.e. Oozie can access data using the identity joe). (See [http://hadoop.apache.org/docs/stable/Secure\_Impersonation.html](http://hadoop.apache.org/docs/stable/Secure_Impersonation.html)for more information).
+
+公共服务在认证的角度出现了挑战。一个公共服务（比如Oozie）必须认证一个用户，然后以这个用户的身份执行操作。代理token在这种情况下不适用，因为它只被颁发给它自己使用Kerberos的认证请求。公共服务要求可以以一种不同但是可信的方式维护用户的身份。为此，Hadoop运行带有Kerberos credential的超级用户，不需要Kerberos credential就可以扮演用户。在core-site.xml配置文件里定义了哪些用户可以被扮演（或者哪些组里的用户可以被扮演）以及扮演用户可以从哪些主机连过来。例如，如果用户joe被配置为可信代理用户，那么超级用户oozie可以通过Kerberos以joe的身份连接到NameNode，并且获取数据（可以通过为用户创建一个代理用户gui做到）。NameNode会检查以确保joe用户可以被扮演，并且请求来源是一个可到许可的地址。一旦验证，NameNode将信任joe的身份（比如，Oozie可以使用joe的身份获取数据）。（更多细节请参考 [http://hadoop.apache.org/docs/stable/Secure\_Impersonation.html](http://hadoop.apache.org/docs/stable/Secure_Impersonation.html) )
+
+
+### Block Access Token 
+### 访问Block的Token
+
+BlockAccessTokens (BATs) are used by HDFS clients (both users and Hadoop services) to perform operations on HDFS blocks. When a client requests access to a block, the NameNode makes an authorization decision and either issues a BAT to the client or fails the request (see HDFS File Permissions below). The client then presents the BAT to the appropriate DataNode. The DataNode checks the token’s authenticity by verifying its signature using a shared secret (shared between the DataNode and the NameNode). The shared secret is a 64-bit random key exchanged between the NameNode and each DataNode when DataNodes report status to the NameNode (heartbeats). The NameNode uses the shared secret key to sign all BATs with HmacSHA1. The DataNode implicitly trusts the authenticity of the client’s identity asserted via the BlockAccessToken as a result of the signature validation.
+
+HDFS客户端（包括用户客户端及服务客户端）在操作HDFS上的block时使用BlockAccessTokens（BATs）。当客户端请求block时，NameNode做一个认证决定，要么给客户端发行一个BAT，要么请求失败（参考下面的HDFS文件权限）。然后客户端向相应的DataNode出示BAT。DataNode通过使用共享secret（在DataNode和NameNode之间共享）验证前面来检查token的可靠性。共享secret是一个64位随机key，在DataNode向NameNode汇报状态（心跳）是在NameNOde和每个DataNode之间交换。NameNode采用HmacSHA1算法使用共享secretkey来加密所有BAT。通过BlockAccessToken的签名校验，DataNode含蓄的信任客户端的可靠性。
+
+BATs have a limited lifetime, which is 10 hours by default (but is configurable via a setting in hdfs-site.xml configuration file). BATs cannot be renewed but a new one can be requested by client at any time.  BATs are not (typically) persistently stored by applications and are never stored by a Hadoop service.
+
+BAT的生命周期是优先的，默认是10个小时（可以通过hdfs-site.xml文件配置）。BAT不能续订，但是客户端可以再任何时候申请一个新的BAT。一般情况下应用不会持久化存储BAT，Hadoop服务从来不会存储BAT。
+
+BATs are present on the wire using two mechanisms: RPC/DTP protocol and HTTP protocol using the WebHDFS REST API. In both cases the entire BAT is sent to theDataNode along with the signature of the token that was generated with the shared secret key.
+
+两种机制是由BAT：RPC/DTP协议，以及是由WebHDFS REST API的HTTP协议。在两种情况下，整个BAT都和是由共享secret key生成的Token的签名一起被发送到DataNode。
+
+The DataXceiver class contains methods `writeBlock()` and `readBlock()`, which are useful in understanding how the BAT is used. The location of this class in the Hadoop project is here:
 
 hadoop-hdfs-project/hadoop-hdfs/src/main/java/org/apache/hadoop/hdfs/server/datanode/DataXceiver.java.
 
-HDFS NameNode Delegation Token {.c1}
-------------------------------
+想要更好的理解BAT是如何使用的，可以参考DataXceiver的方法`writeBlock()`和`readBlock()`, 这个类在Hadoop工程中的路径如下：
 
-HDFS NameNode delegation tokens are used to allow MapReduce jobs
-to?access HDFS resources owned by the user that submitted the job. The
-containers running a job do not have the Kerberos credentials of the
-user that submitted the job, and thus need a delegation token. ?These
-delegation tokens are issued by the NameNode and are typically requested
-by the user during the definition of a MapReduce job and presented to
-the ResourceManager when a job is submitted. ?The renewer for a HDFS
-Delegation Token is typically the ResourceManager. ?In this way the
-ResourceManager can periodically refresh the token during the life of
-the application. ?As the renewer, the ResourceManager can also cancel
-the delegation token once the application is complete.
+hadoop-hdfs-project/hadoop-hdfs/src/main/java/org/apache/hadoop/hdfs/server/datanode/DataXceiver.java.
 
-YARN ResourceManager Delegation Token {.c1}
--------------------------------------
+### HDFS NameNode Delegation Token 
+### HDFS NameNode 代理 Token 
 
-YARN ResourceManager Delegation Tokens are used to allow a MapReduce
-job?to access the ResourceManager and submit new jobs. ?For example, a
-job can submit MapReduce jobs from a Task using a ResourceManager
-Delegation Token (and thus manage a job workflow).?YARN ResourceManager
-Delegation Tokens are ?issued and renewed by the ResourceManager.
+HDFS NameNode delegation tokens are used to allow MapReduce jobs to access HDFS resources owned by the user that submitted the job. The containers running a job do not have the Kerberos credentials of the user that submitted the job, and thus need a delegation token. These delegation tokens are issued by the NameNode and are typically requested by the user during the definition of a MapReduce job and presented to the ResourceManager when a job is submitted. The renewer for a HDFS Delegation Token is typically the ResourceManager. In this way the ResourceManager can periodically refresh the token during the life of the application. As the renewer, the ResourceManager can also cancel the delegation token once the application is complete.
 
-YARN Application Token {.c1}
-----------------------
+HDFS NameNode代理token用来运行MapReduce job访问job提交用户拥有的HDFS资源。运行job的容器没有提交job的用户的Kerberos credential，因此需要一个代理token。这些代理token由NameNode发行，一般在用户定义MapReduce 作业是请求，并在job提交时向ResourceManager出示。HDFS代理Token的续订者一般为ResourceManager。这样ResourceManager可以在应用的声明周期内定期的刷新token。作为一个续订者，ResourceManager也可以在应用完成后取消代理token。
 
-This token protects communication between an ApplicationMaster and the
-ResourceManager. ?The token is made available to the ApplicationMaster
-via the credentials provided by ResourceManager to the NodeManager and
-stored on disk in the containers private storage. When the
-ApplicationMaster is launched all of the tokens in the credentials are
-loaded into the UGI of the ApplicationMaster.? The ApplicationToken is
-then selected whenever a connection is made by ApplicationMaster to the
-ResourceManager. ?This token is only valid for the lifetime of a
-particular ApplicationMaster instance. The token is used by the
-ApplicationMaster instance created as part of the application’s
-execution to authenticate when communicating with the ResourceManager.
-?This application execution may result in multiple attempts to execute
-ApplicationMasters and Tasks. ?These are represented by
-ApplicationAttemptId?and TaskAttemptId. ?
+### YARN ResourceManager Delegation Token
+### YARN ResourceManager 代理 Token
+
+YARN ResourceManager Delegation Tokens are used to allow a MapReduce job to access the ResourceManager and submit new jobs. For example, a job can submit MapReduce jobs from a Task using a ResourceManager Delegation Token (and thus manage a job workflow).YARN ResourceManager Delegation Tokens are issued and renewed by the ResourceManager.
+
+YARN ResourceManager代理Token用来允许MapReduce作业访问ResourceManager和提交新的作业。例如，作业可以在某个任务里使用ResourceManager代理Token提交MapReduce作业（这样来管理一个作业工作流）。YARN ResourceManager代理Token由ResourceManager发行和续订。
+
+### YARN Application Token 
+### YARN应用Token 
+
+This token protects communication between an ApplicationMaster and the ResourceManager. The token is made available to the ApplicationMaster via the credentials provided by ResourceManager to the NodeManager and stored on disk in the containers private storage. When the ApplicationMaster is launched all of the tokens in the credentials are loaded into the UGI of the ApplicationMaster. The ApplicationToken is then selected whenever a connection is made by ApplicationMaster to the ResourceManager. ?This token is only valid for the lifetime of a particular ApplicationMaster instance. The token is used by the ApplicationMaster instance created as part of the application’s execution to authenticate when communicating with the ResourceManager.  This application execution may result in multiple attempts to execute ApplicationMasters and Tasks. ?These are represented by ApplicationAttemptId and TaskAttemptId. 
+
+这个token保护ApplicationMaster和ResourceManager的通信。
 
 YARN Node Manager Container Token {.c1}
 ---------------------------------
