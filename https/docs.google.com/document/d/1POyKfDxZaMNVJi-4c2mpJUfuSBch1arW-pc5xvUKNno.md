@@ -307,63 +307,43 @@ YARN ResourceManager代理Token用来允许MapReduce作业访问ResourceManager�
 ### YARN Application Token 
 ### YARN应用Token 
 
-This token protects communication between an ApplicationMaster and the ResourceManager. The token is made available to the ApplicationMaster via the credentials provided by ResourceManager to the NodeManager and stored on disk in the containers private storage. When the ApplicationMaster is launched all of the tokens in the credentials are loaded into the UGI of the ApplicationMaster. The ApplicationToken is then selected whenever a connection is made by ApplicationMaster to the ResourceManager. ?This token is only valid for the lifetime of a particular ApplicationMaster instance. The token is used by the ApplicationMaster instance created as part of the application’s execution to authenticate when communicating with the ResourceManager.  This application execution may result in multiple attempts to execute ApplicationMasters and Tasks. ?These are represented by ApplicationAttemptId and TaskAttemptId. 
+This token protects communication between an ApplicationMaster and the ResourceManager. The token is made available to the ApplicationMaster via the credentials provided by ResourceManager to the NodeManager and stored on disk in the containers private storage. When the ApplicationMaster is launched all of the tokens in the credentials are loaded into the UGI of the ApplicationMaster. The ApplicationToken is then selected whenever a connection is made by ApplicationMaster to the ResourceManager. This token is only valid for the lifetime of a particular ApplicationMaster instance. The token is used by the ApplicationMaster instance created as part of the application’s execution to authenticate when communicating with the ResourceManager.  This application execution may result in multiple attempts to execute ApplicationMasters and Tasks. These are represented by ApplicationAttemptId and TaskAttemptId. 
 
-这个token保护ApplicationMaster和ResourceManager的通信。
+这个token用来保护ApplicationMaster和ResourceManager的通信。通过ResourceManager给NodeManager出示的credentials后保存到容器的本地私有存储，使得ApplicationMaster可以得到这个token。在ApplicationMaster启动时，所有的credentials里的token被加载到ApplicationMaster的UGI里。每当ApplicationMaster和ResourceManager建立连接时，会选择ApplicationToken。这个token只在ApplicationMaster实例的生命周期有效。作为应用执行的一部分创建的ApplicationMaster在和ResourceManager通信时使用这个token。应用的执行可能会多次尝试执行ApplicationMaster和Task。这些尝试通过ApplicationAttemptId和TaskAttemptId体现。
 
-YARN Node Manager Container Token {.c1}
----------------------------------
+### YARN Node Manager Container Token
+### YARN节点管理容器的Token
 
-This token protects communication between the ApplicationMaster and
-individual NodeManagers. ?Communication between the ApplicationMaster
-and the NodeManager is done to manage the life-cycle of Containers in
-which Tasks execute. ?This token is provided to the ApplicationMaster in
-response to the allocate request of the AMRMProtocol as part of a
-Container. ?The master secret for this token is propagated from the
-ResourceManager which manages this secret to each NodeManager via the
-registration (i.e. ResourceTracker.registerNodeManager) and heartbeat
-(i.e. ResourceTracker.nodeHeartbeat) APIs provided by ResourceManager.
-?The ApplicationMaster will present the NodeManager tokens when using
-the NMClient APIs.
+This token protects communication between the ApplicationMaster and individual NodeManagers. Communication between the ApplicationMaster and the NodeManager is done to manage the life-cycle of Containers in which Tasks execute. This token is provided to the ApplicationMaster in response to the allocate request of the AMRMProtocol as part of a Container. The master secret for this token is propagated from the ResourceManager which manages this secret to each NodeManager via the registration (i.e. ResourceTracker.registerNodeManager) and heartbeat (i.e. ResourceTracker.nodeHeartbeat) APIs provided by ResourceManager. The ApplicationMaster will present the NodeManager tokens when using the NMClient APIs.
 
-Expired container tokens are still valid for calls to stopContainer()
-and getContainerStatus(). There is no way to renew a container token.
+这个Token用来保护ApplicationMaster和每个NodeManager之间的通信。通过ApplicationMaster和NodeManager之间的通信来管理用来执行task的容器的生命周期。这个Token在AMRMProtocol协议中作为Container的一部分返回给申请请求。通过ResourceManager提供的注册（即ResourceTracker.registerNodeManager)和心跳（即ResourceTracker.nodeHeartbeat）API，使得这个token的主秘钥在管理这个秘钥的ResourceManager和每个NodeManager之间传播。ApplicationMaster在使用NMClient API是需要向NodeManager出示这个Token。
 
-YARN Localizer Token {.c1}
---------------------
+Expired container tokens are still valid for calls to stopContainer() and getContainerStatus(). There is no way to renew a container token.
 
-This token is used to protect the communication between a
-ContainerLocalizer and the NodeManager. ?A ContainerLocalizer is
-launched by the NodeManager before the Task Container is launched and is
-responsible for setting up the local file system for Task execution.?
-The ContainerLocalizer uses the LocalizationProtocol to send status
-updates to the NodeManager.
+过期的容器还可以调用stopContainer()和 getContainerStatus()。容器的token不可续订。
 
-MapReduce Client?Token^[[a]](#cmnt1)^ {.c1}
--------------------------------------
+### YARN Localizer Token 
+### YARN Localizer Token 
+
+This token is used to protect the communication between a ContainerLocalizer and the NodeManager. A ContainerLocalizer is launched by the NodeManager before the Task Container is launched and is responsible for setting up the local file system for Task execution. The ContainerLocalizer uses the LocalizationProtocol to send status updates to the NodeManager.
+
+这个token用来保护ContainerLocalizer和NodeManager之间的通信。NodeManager在启动Task容器之前会启动ContainerLocalizer来负责部署Task执行的本地文件系统。ContainerLocalizer使用LocalizationProtocol来向NdoeManager发送状态更新。
+
+
+### MapReduce Client Token
+### MapReduce 客户端 Token
 
 \<Kyle: fix this section\>
 
-The MapReduce Client Token is used to secure connections made by a job
-client to the MapReduce ApplicationMaster. ?This token is created by the
-ResourceManager when a job is submitted. ?The token is provided to the
-job client via the ApplicationReport returned from the
-getApplicationReport()?API in the ClientRMProtocol interface (
+The MapReduce Client Token is used to secure connections made by a job client to the MapReduce ApplicationMaster. This token is created by the ResourceManager when a job is submitted. The token is provided to the job client via the ApplicationReport returned from the getApplicationReport() API in the ClientRMProtocol interface (hadoop-yarn-project/hadoop-yarn/hadoop-yarn-api/src/main/java/org/apache/hadoop/yarn/api/ClientRMProtocol.java).
 
-hadoop-yarn-project/hadoop-yarn/hadoop-yarn-api/src/main/java/org/apache/hadoop/yarn/api/ClientRMProtocol.java).
+在作业客户端和MapReduce ApplicationMaster之间的安全连接使用MapReduce 客户端Token。在Job提交时，由ResourceManager创建这个token。通过包含在ClientRMProtocol接口（hadoop-yarn-project/hadoop-yarn/hadoop-yarn-api/src/main/java/org/apache/hadoop/yarn/api/ClientRMProtocol.java）的getApplicationReport返回的ApplicationReport对象中来返回个作业客户端。
 
-Submitting a job is a three step process using the ClientRMProtcol
-interface: getNewApplication(), submitApplication(),
-getApplicationReport(). ?
+Submitting a job is a three step process using the ClientRMProtcol interface: getNewApplication(), submitApplication(), getApplicationReport(). 
 
-A MapReduce Client Token is a unique ID based on the cluster timestamp,
-application id and application attempt number. ?This is important
-because a given MapReduce Client Token can only be used to access the
-specific job/application identified by that ^[[b]](#cmnt2)^id.
-?MapReduce Client Tokens do not expire and are not
-specifically^[[c]](#cmnt3)^?destroyed. ?However, they can only be used
-when a specific job^[[d]](#cmnt4)^? is running within the MapReduce
-ApplicationMaster. ?
+提交作业即执行ClientRMProtocol接口的三个接口：getNewApplication(),submitApplication()，getApplicationReport().
+
+A MapReduce Client Token is a unique ID based on the cluster timestamp, application id and application attempt number. This is important because a given MapReduce Client Token can only be used to access the specific job/application identified by that id. MapReduce Client Tokens do not expire and are not specifically destroyed. However, they can only be used when a specific job is running within the MapReduce ApplicationMaster. 
 
 A MapReduce Client Token is presented and
 authenticated^[[e]](#cmnt5)^?using Hadoop’s RPC/SASL token handling
@@ -1739,3 +1719,5 @@ hadoop.security.auth\_to\_local property in core-site.xml configuration
 file."
 
 
+
+* [更多文章](https://github.com/argszero/translate/blob/master/README.md)
