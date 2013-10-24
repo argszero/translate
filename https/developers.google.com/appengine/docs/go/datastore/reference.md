@@ -212,6 +212,8 @@ The \*PropertyList type implements PropertyLoadSaver, and can therefore hold an 
 
 Queries retrieve entities based on their properties or key's ancestry. Running a query yields an iterator of results: either keys or (key, entity) pairs. Queries are re-usable and it is safe to call Query.Run from concurrent goroutines. Iterators are not safe for concurrent use.
 
+Query根据实体的属性或者主键的ancestry来获取实体。执行query的结果为一个keys或(key,entity)对儿的iterator。
+
 Queries are immutable, and are either created by calling NewQuery, or derived from an existing query by calling a method like Filter or Order that returns a new query value. A query is typically constructed by calling NewQuery followed by a chain of zero or more such methods. These methods are:
 
 - Ancestor and Filter constrain the entities returned by running a query.

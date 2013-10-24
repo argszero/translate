@@ -177,6 +177,8 @@ The appropriate indexing method will be dictated entirely by your use case and d
 
 In some use cases, both methods may be needed. For example, if most of the emails are indexed in real time but later on you identify a new field that was not indexed before, you may need to go back and run MapReduceIndexerTool to reindex the whole corpus. (There is an HBase near-real time indexer as well, but we’ll address that in a future post.)
 
+在某些场景下，两种方式都是需要的。例如，如果大多数email都是实时索引的，但是，有一天你发现有个字段在之前没有索引，你需要回过头来运行MapReduceIndexerTool来对整个全集重建索引（还有个HBase的近实时的索引，我们会在后面的文章里描述它）
+
 The table below describes some question that may help you identify optimal indexing tools: 
 
 How to Run Batch Indexing
