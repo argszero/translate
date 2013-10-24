@@ -7,26 +7,44 @@ http://www.cubrid.org/blog/dev-platform/meet-impala-open-source-real-time-sql-qu
 
 In this article I would like to introduce you to Cloudera Impala, an open source system which provides real-time SQL querying functionality on top of Hadoop. I will quickly go over when and how Impala was created, then will explain in more details about Impala's architecture, its advantages and drawbacks, compare it to Pig and Hive. You will also learn how to install, configure and run Impala. At the end of this article I will show the performance test results I have obtained when comparing Impala with Hive, Infobright, infiniDB, and Vertica.
 
+在这篇文章里我将向你介绍Cloudera Impala，一个在hadoop之上提供实时SQL查询功能的开源系统。我首先快速回顾下Impala是什么时候以及如何创建的，然后详细的解释一下Impala的架构，与Pig及Hive比较，它的优势及不足。你还可以学习如何安装，配置和运行Impala。在文章的末尾我将展示一个我做的Impala和Hive，Infobright，infiniDB和Vertica的性能测试。
+
 ## Analyzing results in real time through Hadoop
+## 使用Hadoop实时的分析结果
 
 With the advent of Hadoop in 2006, big data analytics was no longer a task that could be performed by only a few companies or groups. This is because Hadoop was an open-source framework, and thus many companies and groups that needed big data analytics could use Hadoop easily at low cost. In other words, big data analytics became a universal technology.
 
+随着2006年Hadoop的出现，大数据分析不再是某些公司和组织的专有技术了。这是因为Hadoop是一个开源的框架，因此很多需要做大数据分析公司和组织可以以很低的代价很容易的使用Hadoop。换句话说，大数据分析变成了通用的技术
+
 The core of Hadoop is Hadoop Distributed File System (HDFS) and MapReduce. Hadoop stores data in HDFS, a file system that can expand the capacity in the form of a distributed file system, conducts MapReduce operations based on the stored data, and consequently gets the required data.
 
+Hadoop的核心是Hadoop分布式文件系统（HDFS）和MapReduce。Hadoop将数据保存在HDFS，HDFS文件系统可以以分布式文件系统的方式扩容。MapReduce操作基于保存的数据操作，从HDFS获取需要的数据。
+
 There is no limit to one's needs. The Hadoop user group tried to overcome Hadoop's limits in terms of functionality and performance, and develop it more. Complaints were focused on the use of MapReduce. MapReduce has two main disadvantages.
+
+没有申请的限制。Hadoop用户组可以在功能、性能等加以限制。抱怨主要集中在MapReduce的使用上。MapReduce有两个主要的不足.
 
 1. It is very inconvenient to use.
 2. Its processing is slow.
 
+1. 使用非常不方便
+2. 处理非常慢
+
 To resolve the inconveniences of using MapReduce, platforms such as Pig and Hive appeared in 2008. Pig and Hive are sub-projects of Hadoop (Hadoop is also an ecosystem of multiple platforms; a variety of products based on Hadoop have been created). Both Pig and Hive have a form of high-level language, but Pig has a procedural form and Hive has a declarative language form similar to SQL. With the advent of Pig and Hive, Hadoop users could conduct big data analytics easier.
+
+为了解决MapReduce使用不方便的问题，在2008年诞生了Pig和Hive等平台。Pig和Hive是Hadoop的子项目（Hadoop还是多个平台组成的一个生态系统；创建了很多记忆Hadoop的产品）。Pig和Hive都有一种high-level language，只是Pig是procedural form而Hive是类似SQL的declarative language form。利用Pig和Hive,Hadoop用户可以很容易的执行大数据分析了。
 
 However, as Hive and Pig are related to the data retrieval interface, they cannot contribute to accelerating big data analytics work. Internally, both Hive and Pig use MapReduce as well.
 
+诞生，因为Hive和Pig都涉及到数据读取接口，他们不恩能够用来加快大数据分析的速度。Hive和Pig的内部都使用了MapReduce。
+
 This is why HBase, a column-based NoSQL appeared. HBase, which enables faster input/output of key/value data, finally provided Hadoop-based systems with an environment in which data could be processed in real time.
+
+这就是为什么出现了HBase这个机遇列存储的NoSql引起。HBase允许快速的写入或读取key/value数据。最终为基于Hadoop的系统提供了一个可以实时处理数据的环境。
 
 This progress of Hadoop (Hadoop eco-System) was greatly influenced by Google. HDFS itself was implemented on the basis of papers on GFS published by Google, and Hbase appears to have been based on Google's papers on BigTable. Table 1 below shows this influential relationship.
 
-
+Hadoop（Hadoop生态系统）的这次进步很大程度上受到了Google的影响。HDFS本身就是基于Google发布的GFS的论文实现的，HBase差不多是基于Google的BigTable的论文。表1展示了这种影响关系
 
 <table>
     <caption>__Table 1: Google Gives Us A Map__ (source: Strata + Hadoop World 2012 Keynote: Beyond Batch - Doug Cutting)</caption>
@@ -62,55 +80,129 @@ This progress of Hadoop (Hadoop eco-System) was greatly influenced by Google. HD
     </tr>
 </table>
 
+<table>
+    <caption>__Table 1: Google给我们带路__ (source: Strata + Hadoop World 2012 Keynote: Beyond Batch - Doug Cutting)</caption>
+    <tr>
+        <th>Google Publication</th>
+        <th>Hadoop</th>
+        <th>Characteristics</th>
+    </tr>
+    <tr>
+        <td>GFS & MapReduce (2004)</td>
+        <td>HDFS & MapReduce (2006)</td>
+        <td>Batch Programs</td>
+    </tr>
+    <tr>
+        <td>Sawzall (2005)</td>
+        <td>Pig & Hive (2008)</td>
+        <td>Batch Queries</td>
+    </tr>
+    <tr>
+        <td>BigTable (2006)</td>
+        <td>HBase (2008)</td>
+        <td>Online key/value</td>
+    </tr>
+    <tr>
+        <td>Dremel (2010)</td>
+        <td>Impala (2012)</td>
+        <td>Online Queries</td>
+    </tr>
+    <tr>
+        <td>Spanner (2012)</td>
+        <td>????</td>
+        <td>Transactions, Etc.</td>
+    </tr>
+</table>
+
 Cloudera's Impala, introduced in this article, was also established under the influence of Google. It was created based on Google's Dremel paper, which was published back in 2010. Impala is an open-source system under an Apache license, which is an interactive/real-time SQL query system that runs on HDFS.
+
+本文描述的Cloudera的Impala，也是受Google的影响而建立的。它基于Google2010年发表的Dremel论文。Impala基于Apache协议开源，是一个Hadoop之上的 交互式/实时 SQL查询系统。
 
 SQL is very familiar to many developers and is able to express data manipulation/retrieval briefly.
 
+很多开发者很熟悉SQL，它可以简洁的表达数据的处理和检索。
+
 As Impala supports SQL and provides real-time big data processing functionality, it has the potential to be utilized as a business intelligence (BI) system. For this reason, some BI vendors are said to have already launched BI system development projects using Impala. The ability to get real-time analytics results by using SQL makes the prospect of big data brighter and also extends the application scope of Hadoop.
 
+由于Impala支持SQL并且提供大数据的实时处理功能，它就可以再商业智能(BI)系统中使用。因此，有些BI提供商已经选错他们已经启动了基于Impala的开发。可以通过SQL实时的获取分析洗过使得大数据的前景更加明朗，也扩展了Hadoop应用的使用场景。
+
+## Cloudera Impala
 ## Cloudera Impala
 
 Cloudera, which created Impala, said they had been technically inspired by Google's Dremel paper, which made them think that it would be possible to perform real-time, ad-hoc queries in Apache Hadoop.
 
+创建了Impala的Cloudera公司，宣称是从Google的Dremel论文获得灵感，他们因此认为在Apache Hadoop上做实时，ad-hoc查询是可行的。
+
 In October 2012, when announcing Impala, Cloudera introduced it as follows:
+
+2012年Cloudera发布Impala时介绍到：
 
 >“Real-Time Queries in Apache Hadoop, For Real”
 
+>“真正的基于Hadoop的实时查询”
+
 Impala adopted Hive-SQL as an interface. As mentioned above, Hive-SQL is similar in terms of syntax to SQL, a popularly used query language. For this reason, users can access data stored in HDFS through a very familiar method.
+
+Impala采用Hive-SQL做接口。如同上面说提及的，Hive-SQL在语法上和流行的查询语言SQL很类似。因此，用户可以采用很相似的方式访问HDFS上保存的数据。
 
 As Hive-SQL uses Hive, you can access the same data through the same method. However, not all Hive-SQLs are supported by Impala. For this reason, you had better understand that Hive-SQLs that are used in Impala can also be used in Hive.
 
+因为Hive也使用Hive-SQL，因此你可以采用同样的方式获取同样的数据。但是，并不是所有的Hive-SQL在Impala中都支持。因此，你最好理解在Imapala中使用的Hive-SQL也可以再Hive中使用。
+
 The difference between Impala and Hive is whether it is real-time or not. While Hive uses MapReduce for data access, Impala uses its unique distributed query engine to minimize response time. This distributed query engine is installed on all data nodes in the cluster.
 
+实时性是Impala和Hive的主要区别。Hive使用MapReduce访问数据，Impala使用它独特的分布式查询引起来最小化响应时间。分布式查询引起安装在集群中的每个data node节点。
+
 This is why Impala and Hive show distinctively different performance in the response time to the same data. Cloudera mentions the following three reasons for Impala's good performance:
+
+这就是为什么Impala和Hive在相同的数据响应时间表现出巨大性能差距的原因。Cloudera指出Impala高性能的三个原因：
 
 1. Impala has reduced CPU load compared to Hive, and thus it can increase IO bandwidth to the extent that CPU load is reduced. This is why Impala shows 3-4 times better performance than Hive on purely IO bound queries.
 2. If a query becomes complex, Hive should conduct multi-stage MapReduce work or reduce side joins. For queries that cannot be efficiently processed through a MapReduce framework (a query that contains at least one join operation), Impala shows 7 to 45 times better performance than Hive.
 3. If the data block to analyze has been file-cached, Impala will show much faster performance, and in this case, it performs 20 to 90 times faster than Hive.
 
+1. Impala和Hive比减少了CPU load，因此它可以增加IO带宽来使用减少的CUP load。这就是为什么Impala在纯IO查询中比Hive高3-4倍的原因。
+2. 对于复杂擦好像，Hive可能会做多阶段的MapReduce或者reduce端的join。对于在MapReduce框架中不能高效执行的查询（至少包含一个join的查询），Impala比Hive有7到45倍的性能提升
+3. 如果要分析的文件块已经被被缓存，Impala会展现出更高的性能，在这种情况下，会比Hive高20到90倍。
 
 ## Real-time in Data Analytics
+## 实时数据分析
 
 The term "real time" is emphasized with the introduction of Impala. But one may naturally ask, "__How much time is real time?__" On this question, Doug Cutting (the person who created Hadoop) and Cloudera's senior architect gave their opinions on what real time is.
+
+Impala的介绍了强调了术语"实时"。很自然的就会有人问，”__耗时多少算实时呢？__" 在这个问题上，Doug Cutting（Hadoop的创始人）和Cloudera的高级架构师给出了他们对实时的理解
 
 * "When you sit and wait for it to finish, that is real time. When you go for a cup of coffee or even let it run overnight, that's not real time."
 * "'real-time' in data analytics is better framed as 'waiting less.'
 
+* “当你坐下来等待它结束时，它就是实时的。当你去倒杯咖啡设置要整晚去运行它时，它就不是实时的”
+* “对于数据分析‘实时'其实是‘较短的等待'的好听些的说法”
+
 Although it would be difficult to clearly define the criteria for real time numerically, if you can wait for a result, watching your monitor, that may be called real time.
+
+虽然确切的量化实时的概念是很困难的，如果你盯着监控等待一个结果，它就可以被称为实时的。
 
 
 ## Impala Architecture
+## Impala 架构
 
 Impala is composed largely of __impalad__ and __impala state store__.
 
+Imala主要由 __impalad__ and __impala state store__ 组成
+
 __Impalad__ is a process that functions as a distributed query engine. It designs a plan for queries and processes queries on data nodes in the Hadoop cluster. __The impala state store__ process maintains metadata for the impalads executed on each data node. When the impalad process is added or deleted in the cluster, metadata is updated through the impala state store process.
+
+__Impalad__是作为分布式查询引擎的一个进程。它为查询设计执行计划，处理Hadoop集群中data node上的数据的查询。 __The impala state store__ 进程为每个datanode上的impalad维护元数据。当集群中的impalad新增或删除时，matadata为通过imapla stat store进程更新。
 
 ![Figure 1:  Impala High-level Architectural View.](http://www.cubrid.org/files/attach/images/220547/566/694/impala_high_level_architectural_view.png)
 Figure 1:  Impala High-level Architectural View.
 
 ## Data Locality Tracking and Direct Reads
+## 数据局部性跟踪以及直接读取
 
 In Impala, the impalad process processes queries on all data nodes in the cluster instead of MapReduce, which is Hadoop's traditional analytic framework. Some advantages of Impala with regard to this configuration include data locality and direct read. In other words, impalad processes only the data block within the data node to which it belongs, and reads the data directly from the local directory. Through this, Impala minimizes network load. Moreover, it can also benefit from the effect of file cache.
+
+在Impala里，采用impalad进程处理集群中所有数据节点的查询，而不是使用Hadoop传统的分析框架MapReduce。相关的优势包括数据局部性
 
 ## Scale Out
 
