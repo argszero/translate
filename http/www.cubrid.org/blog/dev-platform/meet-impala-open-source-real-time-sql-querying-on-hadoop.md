@@ -202,23 +202,36 @@ Figure 1:  Impala High-level Architectural View.
 
 In Impala, the impalad process processes queries on all data nodes in the cluster instead of MapReduce, which is Hadoop's traditional analytic framework. Some advantages of Impala with regard to this configuration include data locality and direct read. In other words, impalad processes only the data block within the data node to which it belongs, and reads the data directly from the local directory. Through this, Impala minimizes network load. Moreover, it can also benefit from the effect of file cache.
 
-在Impala里，采用impalad进程处理集群中所有数据节点的查询，而不是使用Hadoop传统的分析框架MapReduce。相关的优势包括数据局部性
+在Impala里，采用impalad进程处理集群中所有数据节点的查询，而不是使用Hadoop传统的分析框架MapReduce。由此带来的优势包括数据局部性和直接读。换句话说，impala只处理所在的数据节点包含的数据块，直接从本地目录读取。考虑到这点，Impala使得网络负载最小化。跟进一步，它还可以更好的利用文件缓存。
 
 ## Scale Out
+## 扩展
 
 Impala provides a horizontal expansion like Hadoop cluster. In general, you can expand Impala when a cluster is horizontally expanded. All you have to do to expand the Impala that is running the impalad process on the server when a data node is added (metadata for the addition of impalad will be updated through impala state store).
 
+Impala想Hadoop集群一样提供了水平扩展能力。一般来说，你可以在集群水平扩展时扩展Imapla。你所需要做的仅是通过添加数据节点是在上面跑impalad进程（impalad的扩展元数据会通过impala state store更新）
+
 This is very similar to databases based on massively parallel processing (MPP).
 
+这个基于大规模并行处理（MPP）的数据时类似的。
+
 ## Failover
+## 容错
 
 Impala analyzes data stored in Hive and HBase. And HDFS used by Hive and HBase provides a certain level of failover through replication. For this reason, Impala can perform queries if the replica of a data block and at least one impalad process exist.
 
+Impala分析在Hive和HBase里保存的数据，Hive和HBase使用HDFS，通过副本来来保证在一定层次上的容错。因此，Impala可以在有至少一个imapla数据副本上查询。
+
 __Update__: in addition, if Imapala is used in CDH4 (Cloudera’s Distribution including Apache Hadoop), it is possible to configure HA for HDFS.
 
+__更新__： 另外，如果Impala使用CDH4（包含在Cloudera的Apache Hadoop发行版中），可以配置HDFS的HA
+
 ## Single Point of Failure (SPOF)
+## 单点故障
 
 One of the huge concerns about all systems which use HDFS as a storage medium is that their name node is SPOF (we have discussed this in details when comparing HDFS with other distributed file systems in our previous article Overview and Recommendations for Distributed File Systems). Some solutions to prevent this have recently been released, but resolving the problem fundamentally is still a distant goal.
+
+所有使用HDFS作为存储介质的系统都十分关注的问题是name node的单点故障（在我们
 
 ~~ In Impala, the namenode is SPOF as well. This is because you can't perform queries unless you know the location of a data block.~~
  According to Impala Performance and Availability, there is no SPOF in Impala. "All Impala daemons are fully able to handle incoming queries. If a machine fails however, all queries with fragments running on that machine will fail. Because queries are expected to return quickly, you can just rerun the query if there is a failure."
@@ -228,7 +241,7 @@ One of the huge concerns about all systems which use HDFS as a storage medium is
 The following is a brief account of the query execution procedure in Impala:
 
 1. The user selects a certain impalad in the cluster, and registers a query by using impala shell and ODBC.
-2. The impalad that received a query from the user carries out the following pre-task:
+2. The impalad that received a query from the user carries out the following pr e-task:
   1. It brings Table Schema from the Hive metastore and judges the appropriateness of the query statement.
   2. It collects data blocks and location information required to execute the query from the HDFS namenode.
   3. Based on the latest update of Impala metadata, it sends the information required to perform the query to all impalads in the cluster.
