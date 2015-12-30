@@ -11,3 +11,4 @@ translate articles to chinese
 * [5 reasons why the future of Hadoop is real-time (relatively speaking)](http://gigaom.com/2013/03/07/5-reasons-why-the-future-of-hadoop-is-real-time-relatively-speaking/)
 * [图计算](<http/markorodriguez.com/2013/01/09/on-graph-computing.md>)
 * [Shark论文](<http/www.eecs.berkeley.edu/Pubs/TechRpts/2012/EECS-2012-214.md>)
+* [使用卷积神经网络实现句子分类](http/arxiv.org/pdf/1408.5882v2.pdf.md)
