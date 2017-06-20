@@ -12,3 +12,4 @@ translate articles to chinese
 * [图计算](<http/markorodriguez.com/2013/01/09/on-graph-computing.md>)
 * [Shark论文](<http/www.eecs.berkeley.edu/Pubs/TechRpts/2012/EECS-2012-214.md>)
 * [使用卷积神经网络实现句子分类](http/arxiv.org/pdf/1408.5882v2.pdf.md)
+* [万能学习模型](http/arxiv.org/pdf/1706.05137.pdf.md)
